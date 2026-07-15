@@ -55,6 +55,8 @@ VALUES
   ('学院审核', 'college:review:view', 1, 0, '/college-review', 'audit', 70),
   ('额度管理', 'college:quota:view', 1, 0, '/quota', 'wallet', 80),
   ('学院报表', 'college:report:view', 1, 0, '/college-report', 'chart', 90),
+  ('新生管理', 'school:student:view', 1, 0, '/school/students', 'team', 95),
+  ('新生编辑', 'school:student:edit', 2, 0, NULL, NULL, 96),
   ('批次配置', 'school:batch:view', 1, 0, '/batch', 'calendar', 100),
   ('学校审核', 'school:review:view', 1, 0, '/school-review', 'audit', 110),
   ('资金管理', 'school:fund:view', 1, 0, '/fund', 'wallet', 120),
@@ -86,7 +88,8 @@ JOIN gc_permission p ON (
   OR (r.role_code = 'COLLEGE_ADMIN' AND p.permission_code IN
       ('college:review:view', 'college:quota:view', 'college:report:view', 'message:view'))
   OR (r.role_code = 'SCHOOL_ADMIN' AND p.permission_code IN
-      ('school:batch:view', 'school:review:view', 'school:fund:view', 'school:dashboard:view', 'message:view'))
+      ('school:student:view', 'school:student:edit', 'school:batch:view', 'school:review:view',
+       'school:fund:view', 'school:dashboard:view', 'message:view'))
   OR (r.role_code = 'SYSTEM_ADMIN' AND p.permission_code IN
       ('message:view', 'system:user:view', 'system:rbac:view', 'system:dictionary:view', 'system:dictionary:edit',
        'system:integration:view', 'system:log:view'))

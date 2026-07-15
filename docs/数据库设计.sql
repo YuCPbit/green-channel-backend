@@ -245,7 +245,7 @@ CREATE TABLE `gc_student` (
   `student_no` VARCHAR(50) NOT NULL COMMENT '学号',
   `name` VARCHAR(50) NOT NULL COMMENT '姓名',
   `gender` TINYINT DEFAULT NULL COMMENT '性别: 1-男 2-女',
-  `id_card` VARCHAR(255) NOT NULL COMMENT '身份证号(加密存储)',
+  `id_card` VARCHAR(255) NOT NULL COMMENT '身份证号(随机盐不可逆保护，不返回原文)',
   `birth_date` DATE DEFAULT NULL COMMENT '出生日期',
   `nation` VARCHAR(20) DEFAULT NULL COMMENT '民族',
   `political_status` VARCHAR(20) DEFAULT NULL COMMENT '政治面貌',
