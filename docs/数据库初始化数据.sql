@@ -57,6 +57,7 @@ VALUES
   ('学院报表', 'college:report:view', 1, 0, '/college-report', 'chart', 90),
   ('新生管理', 'school:student:view', 1, 0, '/school/students', 'team', 95),
   ('新生编辑', 'school:student:edit', 2, 0, NULL, NULL, 96),
+  ('事务类型配置', 'school:tutor-type:edit', 2, 0, NULL, NULL, 97),
   ('批次配置', 'school:batch:view', 1, 0, '/batch', 'calendar', 100),
   ('学校审核', 'school:review:view', 1, 0, '/school-review', 'audit', 110),
   ('资金管理', 'school:fund:view', 1, 0, '/fund', 'wallet', 120),
@@ -88,10 +89,12 @@ JOIN gc_permission p ON (
   OR (r.role_code = 'COLLEGE_ADMIN' AND p.permission_code IN
       ('college:review:view', 'college:quota:view', 'college:report:view', 'message:view'))
   OR (r.role_code = 'SCHOOL_ADMIN' AND p.permission_code IN
-      ('school:student:view', 'school:student:edit', 'school:batch:view', 'school:review:view',
+      ('school:student:view', 'school:student:edit', 'school:tutor-type:edit',
+       'school:batch:view', 'school:review:view',
        'school:fund:view', 'school:dashboard:view', 'message:view'))
   OR (r.role_code = 'SYSTEM_ADMIN' AND p.permission_code IN
-      ('message:view', 'system:user:view', 'system:rbac:view', 'system:dictionary:view', 'system:dictionary:edit',
+      ('message:view', 'school:tutor-type:edit', 'system:user:view', 'system:rbac:view',
+       'system:dictionary:view', 'system:dictionary:edit',
        'system:integration:view', 'system:log:view'))
 )
 WHERE r.role_code IN ('STUDENT', 'TUTOR', 'COLLEGE_ADMIN', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')
@@ -112,3 +115,19 @@ VALUES
 ON DUPLICATE KEY UPDATE
   title_template = VALUES(title_template), content_template = VALUES(content_template),
   message_type = VALUES(message_type), channels = VALUES(channels), status = VALUES(status), is_deleted = 0;
+
+INSERT INTO gc_tutor_apply_type
+  (type_name, type_code, description, need_amount, need_student, approval_level, form_template, sort, status)
+VALUES
+  ('班级资助专项工作经费申请', 'CLASS_AID_FUND', '申请班级资助专项工作经费', 1, 0, 2,
+   JSON_ARRAY(JSON_OBJECT('key','purpose','label','经费用途','type','textarea','required',true)), 10, 1),
+  ('学生困难等级调整申请', 'POVERTY_LEVEL_CHANGE', '调整学生困难等级', 0, 1, 2,
+   JSON_ARRAY(JSON_OBJECT('key','reason','label','调整原因','type','textarea','required',true)), 20, 1),
+  ('资助材料补充提交申请', 'AID_MATERIAL_SUPPLEMENT', '补充提交资助材料', 0, 1, 1,
+   JSON_ARRAY(JSON_OBJECT('key','materialNote','label','材料说明','type','textarea','required',true)), 30, 1),
+  ('特殊情况说明申请', 'SPECIAL_CASE_NOTE', '提交特殊情况说明', 0, 1, 2,
+   JSON_ARRAY(JSON_OBJECT('key','caseNote','label','情况说明','type','textarea','required',true)), 40, 1)
+ON DUPLICATE KEY UPDATE
+  type_name = VALUES(type_name), description = VALUES(description), need_amount = VALUES(need_amount),
+  need_student = VALUES(need_student), approval_level = VALUES(approval_level),
+  form_template = VALUES(form_template), sort = VALUES(sort), status = VALUES(status), is_deleted = 0;
