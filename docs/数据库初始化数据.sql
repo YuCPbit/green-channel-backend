@@ -63,6 +63,7 @@ VALUES
   ('用户管理', 'system:user:view', 1, 0, '/system/users', 'user', 150),
   ('角色权限', 'system:rbac:view', 1, 0, '/system/rbac', 'safety', 160),
   ('字典参数', 'system:dictionary:view', 1, 0, '/system/dictionary', 'setting', 170),
+  ('字典编辑', 'system:dictionary:edit', 2, 0, NULL, NULL, 175),
   ('接口监控', 'system:integration:view', 1, 0, '/system/integration', 'api', 180),
   ('操作日志', 'system:log:view', 1, 0, '/system/logs', 'file', 190)
 ON DUPLICATE KEY UPDATE
@@ -87,8 +88,8 @@ JOIN gc_permission p ON (
   OR (r.role_code = 'SCHOOL_ADMIN' AND p.permission_code IN
       ('school:batch:view', 'school:review:view', 'school:fund:view', 'school:dashboard:view', 'message:view'))
   OR (r.role_code = 'SYSTEM_ADMIN' AND p.permission_code IN
-      ('system:user:view', 'system:rbac:view', 'system:dictionary:view', 'system:integration:view', 'system:log:view'))
+      ('system:user:view', 'system:rbac:view', 'system:dictionary:view', 'system:dictionary:edit',
+       'system:integration:view', 'system:log:view'))
 )
 WHERE r.role_code IN ('STUDENT', 'TUTOR', 'COLLEGE_ADMIN', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')
 ON DUPLICATE KEY UPDATE is_deleted = 0;
-
