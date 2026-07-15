@@ -27,7 +27,7 @@ public class AuthController {
 
     @GetMapping("/me")
     public ApiResponse<CurrentUser> me(HttpServletRequest request) {
-        return ApiResponse.success(requireCurrentUser(request));
+        return ApiResponse.success((CurrentUser) request.getAttribute(AuthInterceptor.CURRENT_USER_ATTRIBUTE));
     }
 
     @PostMapping("/logout")
@@ -35,11 +35,6 @@ public class AuthController {
         String token = bearerToken(request);
         tokenService.revoke(token);
         return ApiResponse.success(null);
-    }
-
-    private CurrentUser requireCurrentUser(HttpServletRequest request) {
-        return tokenService.resolve(bearerToken(request))
-                .orElseThrow(() -> new BusinessException(40100, "登录已失效，请重新登录"));
     }
 
     private String bearerToken(HttpServletRequest request) {
@@ -50,4 +45,3 @@ public class AuthController {
         return authorization.substring(7).trim();
     }
 }
-

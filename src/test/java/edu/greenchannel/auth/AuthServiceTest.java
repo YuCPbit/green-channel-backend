@@ -6,6 +6,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import java.util.Optional;
 import java.util.Map;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -71,8 +72,12 @@ class AuthServiceTest {
         }
 
         private UserAccount account(long id, String username, String realName, UserType userType) {
-            return new UserAccount(id, username, passwordHash, realName, userType, true);
+            return new UserAccount(
+                    id, username, passwordHash, realName, userType, true,
+                    List.of(userType.name()), List.of(userType.getDisplayName()),
+                    List.of(userType == UserType.SYSTEM_ADMIN ? "system:rbac:view" : "home:view"),
+                    userType.getMenus()
+            );
         }
     }
 }
-

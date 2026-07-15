@@ -13,7 +13,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiResponse<Void>> handleBusiness(BusinessException exception) {
-        HttpStatus status = exception.getCode() == 40100 ? HttpStatus.UNAUTHORIZED : HttpStatus.BAD_REQUEST;
+        HttpStatus status = switch (exception.getCode()) {
+            case 40100 -> HttpStatus.UNAUTHORIZED;
+            case 40300 -> HttpStatus.FORBIDDEN;
+            default -> HttpStatus.BAD_REQUEST;
+        };
         return ResponseEntity.status(status).body(ApiResponse.failure(exception.getCode(), exception.getMessage()));
     }
 
@@ -24,4 +28,3 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.failure(50000, "系统暂时不可用，请稍后重试"));
     }
 }
-

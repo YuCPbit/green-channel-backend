@@ -42,3 +42,53 @@ END
 WHERE user.username IN ('student01', 'tutor01', 'college01', 'school01', 'admin01')
 ON DUPLICATE KEY UPDATE is_deleted = 0;
 
+-- 首批菜单权限。permission_code 是前后端共同使用的稳定契约，中文名称可调整。
+INSERT INTO gc_permission
+  (permission_name, permission_code, type, parent_id, path, icon, sort)
+VALUES
+  ('首页', 'home:view', 1, 0, '/', 'home', 10),
+  ('绿色通道', 'student:green:view', 1, 0, '/green-channel', 'leaf', 20),
+  ('困难补助', 'student:subsidy:view', 1, 0, '/subsidy', 'fund', 30),
+  ('学生管理', 'tutor:student:view', 1, 0, '/students', 'team', 40),
+  ('资助审核', 'tutor:review:view', 1, 0, '/aid-review', 'audit', 50),
+  ('事务申请', 'tutor:application:view', 1, 0, '/tutor-application', 'form', 60),
+  ('学院审核', 'college:review:view', 1, 0, '/college-review', 'audit', 70),
+  ('额度管理', 'college:quota:view', 1, 0, '/quota', 'wallet', 80),
+  ('学院报表', 'college:report:view', 1, 0, '/college-report', 'chart', 90),
+  ('批次配置', 'school:batch:view', 1, 0, '/batch', 'calendar', 100),
+  ('学校审核', 'school:review:view', 1, 0, '/school-review', 'audit', 110),
+  ('资金管理', 'school:fund:view', 1, 0, '/fund', 'wallet', 120),
+  ('数据看板', 'school:dashboard:view', 1, 0, '/dashboard', 'dashboard', 130),
+  ('消息中心', 'message:view', 1, 0, '/messages', 'bell', 140),
+  ('用户管理', 'system:user:view', 1, 0, '/system/users', 'user', 150),
+  ('角色权限', 'system:rbac:view', 1, 0, '/system/rbac', 'safety', 160),
+  ('字典参数', 'system:dictionary:view', 1, 0, '/system/dictionary', 'setting', 170),
+  ('接口监控', 'system:integration:view', 1, 0, '/system/integration', 'api', 180),
+  ('操作日志', 'system:log:view', 1, 0, '/system/logs', 'file', 190)
+ON DUPLICATE KEY UPDATE
+  permission_name = VALUES(permission_name),
+  type = VALUES(type),
+  path = VALUES(path),
+  icon = VALUES(icon),
+  sort = VALUES(sort),
+  is_deleted = 0;
+
+INSERT INTO gc_role_permission (role_id, permission_id)
+SELECT r.id, p.id
+FROM gc_role r
+JOIN gc_permission p ON (
+  p.permission_code = 'home:view'
+  OR (r.role_code = 'STUDENT' AND p.permission_code IN
+      ('student:green:view', 'student:subsidy:view', 'message:view'))
+  OR (r.role_code = 'TUTOR' AND p.permission_code IN
+      ('tutor:student:view', 'tutor:review:view', 'tutor:application:view', 'message:view'))
+  OR (r.role_code = 'COLLEGE_ADMIN' AND p.permission_code IN
+      ('college:review:view', 'college:quota:view', 'college:report:view', 'message:view'))
+  OR (r.role_code = 'SCHOOL_ADMIN' AND p.permission_code IN
+      ('school:batch:view', 'school:review:view', 'school:fund:view', 'school:dashboard:view', 'message:view'))
+  OR (r.role_code = 'SYSTEM_ADMIN' AND p.permission_code IN
+      ('system:user:view', 'system:rbac:view', 'system:dictionary:view', 'system:integration:view', 'system:log:view'))
+)
+WHERE r.role_code IN ('STUDENT', 'TUTOR', 'COLLEGE_ADMIN', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')
+ON DUPLICATE KEY UPDATE is_deleted = 0;
+
