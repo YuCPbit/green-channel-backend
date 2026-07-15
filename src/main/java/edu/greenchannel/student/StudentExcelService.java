@@ -83,6 +83,30 @@ public class StudentExcelService {
         }
     }
 
+    public byte[] errorReport(List<StudentImportError> errors) {
+        try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            Sheet sheet = workbook.createSheet("导入错误");
+            Row header = sheet.createRow(0);
+            header.createCell(0).setCellValue("原Excel行号");
+            header.createCell(1).setCellValue("学号");
+            header.createCell(2).setCellValue("错误原因");
+            for (int index = 0; index < errors.size(); index++) {
+                StudentImportError error = errors.get(index);
+                Row row = sheet.createRow(index + 1);
+                row.createCell(0).setCellValue(error.rowNumber());
+                row.createCell(1).setCellValue(error.studentNo());
+                row.createCell(2).setCellValue(error.reason());
+            }
+            sheet.setColumnWidth(0, 15 * 256);
+            sheet.setColumnWidth(1, 20 * 256);
+            sheet.setColumnWidth(2, 45 * 256);
+            workbook.write(output);
+            return output.toByteArray();
+        } catch (IOException exception) {
+            throw new IllegalStateException("无法生成错误报告", exception);
+        }
+    }
+
     private void validateFile(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new BusinessException(40001, "请选择 Excel 文件");

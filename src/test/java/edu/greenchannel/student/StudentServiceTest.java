@@ -59,6 +59,20 @@ class StudentServiceTest {
         assertEquals(40900, error.getCode());
     }
 
+    @Test
+    void createsDownloadableErrorWorkbookWithoutIdCard() {
+        service.create(validRequest());
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "students.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", excelService.template());
+
+        StudentImportResult result = service.importExcel(file);
+        byte[] report = service.importErrorReport(result.errorReportId());
+
+        assertEquals(1, result.failedRows());
+        assertTrue(report.length > 0);
+    }
+
     private StudentRequest validRequest() {
         return new StudentRequest(
                 "20260001", "示例学生", 2, "000000200001010021", "13800000000",

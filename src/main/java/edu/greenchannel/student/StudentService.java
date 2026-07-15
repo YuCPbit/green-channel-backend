@@ -9,12 +9,15 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Year;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
 @Service
@@ -29,6 +32,7 @@ public class StudentService {
     private final StudentDataProtector protector;
     private final StudentExcelService excelService;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    private final Map<String, ErrorReportEntry> errorReports = new ConcurrentHashMap<>();
 
     public StudentService(
             StudentRepository repository, StudentDataProtector protector, StudentExcelService excelService) {
@@ -67,7 +71,18 @@ public class StudentService {
                         row.rowNumber(), safeStudentNo(row.request().studentNo()), exception.getMessage()));
             }
         }
-        return new StudentImportResult(rows.size(), imported, errors.size(), true, List.copyOf(errors));
+        String reportId = errors.isEmpty() ? null : storeErrorReport(errors);
+        return new StudentImportResult(
+                rows.size(), imported, errors.size(), true, reportId, List.copyOf(errors));
+    }
+
+    public byte[] importErrorReport(String reportId) {
+        cleanupErrorReports();
+        ErrorReportEntry entry = errorReports.get(reportId);
+        if (entry == null) {
+            throw new BusinessException(40400, "错误报告不存在或已过期");
+        }
+        return excelService.errorReport(entry.errors());
     }
 
     @Transactional
@@ -218,5 +233,23 @@ public class StudentService {
 
     private String safeStudentNo(String value) {
         return StringUtils.hasText(value) ? value.trim() : "";
+    }
+
+    private String storeErrorReport(List<StudentImportError> errors) {
+        cleanupErrorReports();
+        if (errorReports.size() >= 1000) {
+            errorReports.keySet().stream().findFirst().ifPresent(errorReports::remove);
+        }
+        String id = UUID.randomUUID().toString();
+        errorReports.put(id, new ErrorReportEntry(List.copyOf(errors), Instant.now().plusSeconds(1800)));
+        return id;
+    }
+
+    private void cleanupErrorReports() {
+        Instant now = Instant.now();
+        errorReports.entrySet().removeIf(entry -> entry.getValue().expiresAt().isBefore(now));
+    }
+
+    private record ErrorReportEntry(List<StudentImportError> errors, Instant expiresAt) {
     }
 }

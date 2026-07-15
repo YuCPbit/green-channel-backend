@@ -7,5 +7,6 @@ public record StudentImportResult(
         int importedRows,
         int failedRows,
         boolean activationRequired,
+        String errorReportId,
         List<StudentImportError> errors) {
 }

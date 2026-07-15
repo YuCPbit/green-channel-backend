@@ -63,6 +63,17 @@ public class StudentController {
         return ApiResponse.success(service.importExcel(file));
     }
 
+    @GetMapping("/imports/{reportId}/errors")
+    @RequirePermission("school:student:view")
+    public ResponseEntity<byte[]> importErrors(@PathVariable String reportId) {
+        ContentDisposition disposition = ContentDisposition.attachment()
+                .filename("student-import-errors.xlsx", StandardCharsets.UTF_8).build();
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .contentType(XLSX)
+                .body(service.importErrorReport(reportId));
+    }
+
     @PostMapping
     @RequirePermission("school:student:edit")
     @OperationLog(module = "新生信息", action = "CREATE", targetId = "#result.data.id")
