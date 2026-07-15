@@ -15,3 +15,6 @@ logging:
     root: INFO
     edu.greenchannel: DEBUG
 
+app:
+  attachment:
+    storage-path: ${ATTACHMENT_STORAGE_PATH:./data/attachments}

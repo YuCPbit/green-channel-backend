@@ -361,6 +361,27 @@ CREATE TABLE `gc_apply_attachment` (
   KEY `idx_apply_type_id` (`apply_type`, `apply_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='申请附件表';
 
+-- 23.1 公共附件表（V1 公共接口使用；支持草稿阶段先上传、后绑定）
+CREATE TABLE `gc_attachment` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `owner_id` BIGINT NOT NULL COMMENT '上传人用户ID',
+  `original_name` VARCHAR(255) NOT NULL COMMENT '原始文件名',
+  `stored_name` VARCHAR(255) NOT NULL COMMENT '服务端随机文件名',
+  `content_type` VARCHAR(150) NOT NULL COMMENT '服务端校验后的MIME类型',
+  `file_size` BIGINT NOT NULL COMMENT '文件大小(字节)',
+  `storage_path` VARCHAR(500) NOT NULL COMMENT '服务端存储路径，不对外返回',
+  `business_type` VARCHAR(50) DEFAULT NULL COMMENT '业务类型编码',
+  `business_id` BIGINT DEFAULT NULL COMMENT '绑定的业务主键',
+  `status` VARCHAR(20) NOT NULL DEFAULT 'READY' COMMENT 'READY/DELETED',
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `is_deleted` TINYINT(1) DEFAULT 0 COMMENT '逻辑删除',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_stored_name` (`stored_name`),
+  KEY `idx_attachment_owner` (`owner_id`, `create_time`),
+  KEY `idx_attachment_business` (`business_type`, `business_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='公共附件表';
+
 
 -- ========================================================
 -- 分组：审核流程组

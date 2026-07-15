@@ -3,6 +3,6 @@
 .vscode/
 *.iml
 target/
+data/
 .env
 *.log
-

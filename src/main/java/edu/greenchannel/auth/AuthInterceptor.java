@@ -8,7 +8,7 @@ import org.springframework.web.servlet.HandlerInterceptor;
 
 @Component
 public class AuthInterceptor implements HandlerInterceptor {
-    public static final String CURRENT_USER_ATTRIBUTE = CurrentUser.class.getName();
+    public static final String CURRENT_USER_ATTRIBUTE = "edu.greenchannel.auth.CurrentUser";
     private final TokenService tokenService;
 
     public AuthInterceptor(TokenService tokenService) {
@@ -27,4 +27,3 @@ public class AuthInterceptor implements HandlerInterceptor {
         return true;
     }
 }
-
