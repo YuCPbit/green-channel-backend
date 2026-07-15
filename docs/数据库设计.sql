@@ -169,6 +169,21 @@ CREATE TABLE `gc_message_event_retry` (
   KEY `idx_event_retry` (`retry_status`, `next_retry_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='消息事件失败重试表';
 
+-- 6.5 外部接口调用监控表
+CREATE TABLE `gc_integration_call_log` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `client_id` VARCHAR(50) NOT NULL COMMENT '调用方标识，不记录Token',
+  `request_method` VARCHAR(10) NOT NULL COMMENT 'HTTP方法',
+  `request_path` VARCHAR(255) NOT NULL COMMENT '请求路径',
+  `success` TINYINT(1) NOT NULL COMMENT '是否成功',
+  `duration_ms` BIGINT NOT NULL DEFAULT 0 COMMENT '耗时毫秒',
+  `failure_type` VARCHAR(100) DEFAULT NULL COMMENT '失败类型，不记录异常原文',
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_integration_client_time` (`client_id`, `create_time`),
+  KEY `idx_integration_success_time` (`success`, `create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='外部接口调用监控表';
+
 
 -- ========================================================
 -- 分组：组织架构组

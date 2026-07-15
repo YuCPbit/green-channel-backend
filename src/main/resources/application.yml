@@ -18,3 +18,5 @@ logging:
 app:
   attachment:
     storage-path: ${ATTACHMENT_STORAGE_PATH:./data/attachments}
+  integration:
+    api-key: ${INTEGRATION_API_KEY:}

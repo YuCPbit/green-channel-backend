@@ -16,6 +16,9 @@ public class GlobalExceptionHandler {
         HttpStatus status = switch (exception.getCode()) {
             case 40100 -> HttpStatus.UNAUTHORIZED;
             case 40300 -> HttpStatus.FORBIDDEN;
+            case 40400 -> HttpStatus.NOT_FOUND;
+            case 40900 -> HttpStatus.CONFLICT;
+            case 50300 -> HttpStatus.SERVICE_UNAVAILABLE;
             default -> HttpStatus.BAD_REQUEST;
         };
         return ResponseEntity.status(status).body(ApiResponse.failure(exception.getCode(), exception.getMessage()));
