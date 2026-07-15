@@ -102,6 +102,73 @@ CREATE TABLE `gc_operation_log` (
   KEY `idx_user_time` (`user_id`, `operation_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='操作日志表';
 
+-- 6.1 消息模板表
+CREATE TABLE `gc_message_template` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `event_code` VARCHAR(80) NOT NULL COMMENT '消息事件编码',
+  `title_template` VARCHAR(200) NOT NULL COMMENT '标题模板',
+  `content_template` TEXT NOT NULL COMMENT '正文模板',
+  `message_type` VARCHAR(50) NOT NULL DEFAULT 'BUSINESS' COMMENT '消息类型',
+  `channels` VARCHAR(100) NOT NULL DEFAULT 'IN_APP' COMMENT '发送渠道，逗号分隔',
+  `status` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否启用',
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `is_deleted` TINYINT(1) DEFAULT 0 COMMENT '是否逻辑删除',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_message_template_event` (`event_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='消息模板表';
+
+-- 6.2 站内消息表
+CREATE TABLE `gc_message` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `receiver_user_id` BIGINT NOT NULL COMMENT '接收人用户ID',
+  `event_code` VARCHAR(80) NOT NULL COMMENT '消息事件编码',
+  `business_id` VARCHAR(100) DEFAULT NULL COMMENT '关联业务主键',
+  `title` VARCHAR(200) NOT NULL COMMENT '消息标题',
+  `content` TEXT NOT NULL COMMENT '消息正文',
+  `message_type` VARCHAR(50) NOT NULL DEFAULT 'BUSINESS' COMMENT '消息类型',
+  `read_status` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否已读',
+  `read_time` DATETIME DEFAULT NULL COMMENT '已读时间',
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `is_deleted` TINYINT(1) DEFAULT 0 COMMENT '是否逻辑删除',
+  PRIMARY KEY (`id`),
+  KEY `idx_message_receiver_read` (`receiver_user_id`, `read_status`, `create_time`),
+  KEY `idx_message_business` (`event_code`, `business_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='站内消息表';
+
+-- 6.3 消息渠道投递记录表
+CREATE TABLE `gc_message_delivery` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `message_id` BIGINT NOT NULL COMMENT '站内消息ID',
+  `channel` VARCHAR(30) NOT NULL COMMENT 'IN_APP/SMS/WECHAT/EMAIL',
+  `delivery_status` VARCHAR(20) NOT NULL COMMENT 'SUCCESS/RETRY/FAILED',
+  `attempt_count` INT NOT NULL DEFAULT 0 COMMENT '尝试次数',
+  `failure_type` VARCHAR(100) DEFAULT NULL COMMENT '失败类型，不记录异常原文',
+  `next_retry_time` DATETIME DEFAULT NULL COMMENT '下次重试时间',
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_delivery_retry` (`delivery_status`, `next_retry_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='消息渠道投递记录表';
+
+-- 6.4 消息事件失败重试表
+CREATE TABLE `gc_message_event_retry` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `event_code` VARCHAR(80) NOT NULL COMMENT '消息事件编码',
+  `receiver_user_id` BIGINT NOT NULL COMMENT '接收人用户ID',
+  `business_id` VARCHAR(100) DEFAULT NULL COMMENT '关联业务主键',
+  `variables_json` JSON DEFAULT NULL COMMENT '模板变量，仅存业务字段',
+  `failure_type` VARCHAR(100) DEFAULT NULL COMMENT '失败类型，不记录异常原文',
+  `retry_status` VARCHAR(20) NOT NULL DEFAULT 'PENDING' COMMENT 'PENDING/SUCCESS/DEAD',
+  `attempt_count` INT NOT NULL DEFAULT 0 COMMENT '重试次数',
+  `next_retry_time` DATETIME DEFAULT NULL COMMENT '下次重试时间',
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_event_retry` (`retry_status`, `next_retry_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='消息事件失败重试表';
+
 
 -- ========================================================
 -- 分组：组织架构组

@@ -88,8 +88,24 @@ JOIN gc_permission p ON (
   OR (r.role_code = 'SCHOOL_ADMIN' AND p.permission_code IN
       ('school:batch:view', 'school:review:view', 'school:fund:view', 'school:dashboard:view', 'message:view'))
   OR (r.role_code = 'SYSTEM_ADMIN' AND p.permission_code IN
-      ('system:user:view', 'system:rbac:view', 'system:dictionary:view', 'system:dictionary:edit',
+      ('message:view', 'system:user:view', 'system:rbac:view', 'system:dictionary:view', 'system:dictionary:edit',
        'system:integration:view', 'system:log:view'))
 )
 WHERE r.role_code IN ('STUDENT', 'TUTOR', 'COLLEGE_ADMIN', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')
 ON DUPLICATE KEY UPDATE is_deleted = 0;
+
+INSERT INTO gc_message_template
+  (event_code, title_template, content_template, message_type, channels, status)
+VALUES
+  ('GIFT_APPLY_SUBMITTED', '绿色通道申请已提交', '您的绿色通道申请已提交，业务编号：${businessId}', 'BUSINESS', 'IN_APP,SMS,WECHAT,EMAIL', 1),
+  ('GIFT_REVIEW_RETURNED', '绿色通道申请被退回', '您的绿色通道申请需要补充材料，业务编号：${businessId}', 'BUSINESS', 'IN_APP,SMS,WECHAT,EMAIL', 1),
+  ('GIFT_REVIEW_PASSED', '绿色通道申请已通过', '您的绿色通道申请已审核通过，业务编号：${businessId}', 'BUSINESS', 'IN_APP,SMS,WECHAT,EMAIL', 1),
+  ('SUBSIDY_APPLY_SUBMITTED', '困难补助申请已提交', '您的困难补助申请已提交，业务编号：${businessId}', 'BUSINESS', 'IN_APP,SMS,WECHAT,EMAIL', 1),
+  ('SUBSIDY_REVIEW_RETURNED', '困难补助申请被退回', '您的困难补助申请需要补充材料，业务编号：${businessId}', 'BUSINESS', 'IN_APP,SMS,WECHAT,EMAIL', 1),
+  ('SUBSIDY_REVIEW_PASSED', '困难补助申请已通过', '您的困难补助申请已审核通过，业务编号：${businessId}', 'BUSINESS', 'IN_APP,SMS,WECHAT,EMAIL', 1),
+  ('PAYMENT_STATUS_CHANGED', '资助发放状态已更新', '您的资助发放状态已更新，业务编号：${businessId}', 'IMPORTANT', 'IN_APP,SMS,WECHAT,EMAIL', 1),
+  ('WORK_STUDY_HIRED', '勤工助学录用通知', '您已被勤工助学岗位录用，业务编号：${businessId}', 'IMPORTANT', 'IN_APP,SMS,WECHAT,EMAIL', 1),
+  ('WORK_STUDY_AGREEMENT_PENDING', '勤工助学协议待签署', '您有一份勤工助学协议待签署，业务编号：${businessId}', 'IMPORTANT', 'IN_APP,SMS,WECHAT,EMAIL', 1)
+ON DUPLICATE KEY UPDATE
+  title_template = VALUES(title_template), content_template = VALUES(content_template),
+  message_type = VALUES(message_type), channels = VALUES(channels), status = VALUES(status), is_deleted = 0;
