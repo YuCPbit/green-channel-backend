@@ -7,6 +7,7 @@ public record UserAccount(
         String username,
         String passwordHash,
         String realName,
+        Long collegeId,
         UserType userType,
         boolean enabled,
         List<String> roleCodes,

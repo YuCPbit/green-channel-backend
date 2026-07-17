@@ -17,13 +17,14 @@ public class JdbcUserRepository implements UserRepository {
     @Override
     public Optional<UserAccount> findByUsername(String username) {
         return jdbcTemplate.query("""
-                        SELECT id, username, password_hash, real_name, user_type, status
+                        SELECT id, username, password_hash, real_name, user_type, college_id, status
                         FROM gc_user
                         WHERE username = ? AND is_deleted = 0
                         LIMIT 1
                         """,
                 (resultSet, rowNum) -> {
                     long userId = resultSet.getLong("id");
+                    long collegeId = resultSet.getLong("college_id");
                     List<String> roleCodes = queryRoleField(userId, "role_code");
                     List<String> roleNames = queryRoleField(userId, "role_name");
                     List<PermissionRow> permissions = queryPermissions(userId);
@@ -32,6 +33,7 @@ public class JdbcUserRepository implements UserRepository {
                         resultSet.getString("username"),
                         resultSet.getString("password_hash"),
                         resultSet.getString("real_name"),
+                        resultSet.wasNull() ? null : collegeId,
                         UserType.fromCode(resultSet.getInt("user_type")),
                         resultSet.getInt("status") == 1,
                         roleCodes,

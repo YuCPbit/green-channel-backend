@@ -20,6 +20,7 @@ public class DictionaryService {
     private final Clock clock;
     private final Map<String, CacheEntry> cache = new ConcurrentHashMap<>();
 
+    @org.springframework.beans.factory.annotation.Autowired
     public DictionaryService(DictionaryRepository repository) {
         this(repository, Clock.systemUTC());
     }
