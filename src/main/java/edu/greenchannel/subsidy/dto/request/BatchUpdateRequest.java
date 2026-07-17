@@ -8,6 +8,5 @@ public record BatchUpdateRequest(
         BigDecimal totalAmount,
         LocalDateTime applyStartTime,
         LocalDateTime applyEndTime,
-        LocalDateTime collegeSubmitEndTime,
-        Integer status
+        LocalDateTime collegeSubmitEndTime
 ) {}

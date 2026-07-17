@@ -43,7 +43,7 @@ public class SubsidyAllocationServiceImpl implements SubsidyAllocationService {
 
     @Override
     @Transactional
-    public void allocateQuota(AllocationCreateRequest request, Long currentUserId, Integer currentUserRole, Long currentUserCollegeId) {
+    public void allocateQuota(AllocationCreateRequest request, Integer currentUserRole, Long currentUserCollegeId) {
         // 1. 角色权限校验 + 预算控费
         if (request.targetType().equals(TargetType.COLLEGE.getCode())) {
             if (currentUserRole != 1) {

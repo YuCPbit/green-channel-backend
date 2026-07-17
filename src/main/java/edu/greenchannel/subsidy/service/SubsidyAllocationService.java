@@ -8,7 +8,7 @@ import edu.greenchannel.subsidy.entity.College;
 import java.util.List;
 
 public interface SubsidyAllocationService {
-    void allocateQuota(AllocationCreateRequest request, Long currentUserId, Integer currentUserRole, Long currentUserCollegeId);
+    void allocateQuota(AllocationCreateRequest request, Integer currentUserRole, Long currentUserCollegeId);
     AllocationSummaryResponse getSummary(Long batchId, Integer currentUserRole, Long currentUserCollegeId);
     List<AllocationItemResponse> listAllocations(Long batchId, Integer targetType);
     List<College> listColleges();

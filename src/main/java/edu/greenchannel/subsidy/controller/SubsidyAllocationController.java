@@ -22,11 +22,10 @@ public class SubsidyAllocationController {
     @PostMapping
     public ApiResponse<String> allocateQuota(
             @RequestBody AllocationCreateRequest request,
-            @RequestHeader(value = "X-User-Id", defaultValue = "1") Long currentUserId,
             @RequestHeader(value = "X-User-Role", defaultValue = "1") Integer currentUserRole,
             @RequestHeader(value = "X-College-Id", defaultValue = "1") Long currentUserCollegeId
     ) {
-        allocationService.allocateQuota(request, currentUserId, currentUserRole, currentUserCollegeId);
+        allocationService.allocateQuota(request, currentUserRole, currentUserCollegeId);
         return ApiResponse.success("额度分配下发成功！");
     }
 
