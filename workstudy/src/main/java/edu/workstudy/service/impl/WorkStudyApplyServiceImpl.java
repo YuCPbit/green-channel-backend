@@ -57,4 +57,39 @@ public class WorkStudyApplyServiceImpl
         save(applyInfo);
         return applyInfo.getId();
     }
+
+    /**
+     * 录入面试结果
+     * @param applyId 报名ID
+     * @param interviewerId 面试官ID（用工部门老师）
+     * @param interviewStatus 面试状态: 2-通过 3-不通过
+     * @param remark 面试评语
+     */
+
+    public void recordInterviewResult(Long applyId, Long interviewerId, Integer interviewStatus, String remark) {
+        WorkStudyApply apply = getById(applyId);
+        if (apply == null || apply.getIsDeleted() == 1) {
+            throw new RuntimeException("报名记录不存在");
+        }
+        // 只有待面试或已面试未出结果的才能录入
+        // 只有“待面试(0)”状态才能录入结果
+        if (apply.getInterviewStatus() != 0) {
+            throw new RuntimeException("该生面试结果已录入或状态不正确，请勿重复操作");
+        }
+
+        apply.setInterviewStatus(interviewStatus); // 2或3
+        apply.setInterviewerId(interviewerId);
+        apply.setInterviewRemark(remark);
+        apply.setInterviewTime(LocalDateTime.now());
+
+        // 如果面试通过，状态变更为待录用审批（3）
+        // 如果面试不通过，状态变更为未录用（5）
+        if (interviewStatus == 2) {
+            apply.setStatus(3); // 待录用审批
+        } else if (interviewStatus == 3) {
+            apply.setStatus(5); // 未录用
+        }
+
+        updateById(apply);
+    }
 }
