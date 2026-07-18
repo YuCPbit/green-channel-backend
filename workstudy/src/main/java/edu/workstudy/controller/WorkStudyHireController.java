@@ -23,6 +23,6 @@ public class WorkStudyHireController {
     @PostMapping("/approve")
     public Result<?> approveHire(@RequestParam Long applyId, @RequestParam Long approverId) {
         Long hireId = hireService.approveHire(applyId, approverId);
-        return Result.success("录用成功", hireId);
+        return Result.success(hireId);
     }
 }

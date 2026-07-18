@@ -20,7 +20,7 @@ public class WorkStudyAttendanceController {
     @PostMapping("/check-in")
     public Result<?> checkIn(@RequestParam Long hireId, @RequestParam Long studentId, @RequestParam String location) {
         Long attendanceId = attendanceService.checkIn(hireId, studentId, location);
-        return Result.success("签到成功", attendanceId);
+        return Result.success(attendanceId);
     }
 
     @PostMapping("/check-out")
