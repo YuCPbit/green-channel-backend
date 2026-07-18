@@ -6,7 +6,7 @@ import edu.workstudy.service.WorkStudyPositionService;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/workstudy/position")
+@RequestMapping("/position")
 public class WorkStudyPositionController {
 
     private final WorkStudyPositionService positionService;

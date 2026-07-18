@@ -6,7 +6,7 @@ import edu.workstudy.service.WorkStudyApplyService;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/workstudy/apply")
+@RequestMapping("/apply")
 public class WorkStudyApplyController {
 
     private final WorkStudyApplyService applyService;

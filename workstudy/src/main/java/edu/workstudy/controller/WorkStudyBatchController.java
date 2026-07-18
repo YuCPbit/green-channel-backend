@@ -6,7 +6,7 @@ import edu.workstudy.service.WorkStudyBatchService;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/workstudy/batch")
+@RequestMapping("/batch")
 public class WorkStudyBatchController {
 
     private final WorkStudyBatchService batchService;
