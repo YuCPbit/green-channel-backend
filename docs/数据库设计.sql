@@ -15,6 +15,7 @@ CREATE TABLE `gc_user` (
   `phone` VARCHAR(20) DEFAULT NULL COMMENT '手机号',
   `email` VARCHAR(100) DEFAULT NULL COMMENT '邮箱',
   `user_type` TINYINT NOT NULL COMMENT '用户类型: 1-学生 2-辅导员 3-学院管理员 4-学校管理员 5-系统管理员',
+  `college_id` BIGINT DEFAULT NULL COMMENT '所属学院ID（学院管理员/辅导员必填）',
   `status` TINYINT DEFAULT 1 COMMENT '状态: 1-正常 0-禁用',
   `last_login_time` DATETIME DEFAULT NULL COMMENT '最后登录时间',
   `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -531,6 +532,7 @@ CREATE TABLE `gc_subsidy_batch` (
   `total_amount` DECIMAL(12,2) NOT NULL DEFAULT 0.00 COMMENT '学校总金额盘',
   `apply_start_time` DATETIME NOT NULL COMMENT '申请开始时间',
   `apply_end_time` DATETIME NOT NULL COMMENT '申请结束时间',
+  `college_submit_end_time` DATETIME NOT NULL COMMENT '学院审核截止时间',
   `status` TINYINT DEFAULT 1 COMMENT '状态: 0-未开始 1-进行中 2-已结束',
   `creator_id` BIGINT DEFAULT NULL COMMENT '创建人ID',
   `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -543,6 +545,10 @@ CREATE TABLE `gc_subsidy_batch` (
 CREATE TABLE `gc_subsidy_allocation` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   `batch_id` BIGINT NOT NULL COMMENT '补助批次ID',
+  `allocator_role` TINYINT NOT NULL COMMENT '分配人角色：1-学校资助中心 2-学院管理员',
+  `target_type` TINYINT NOT NULL COMMENT '下发目标类型：1-下发给学院 2-下发给年级',
+  `source_id` BIGINT NOT NULL DEFAULT 0 COMMENT '源ID（若为学院分配，则为学院学院ID；学校分配则为0）',
+  `target_id` BIGINT NOT NULL COMMENT '目标ID（学院ID或年级/班级编码）',
   `college_id` BIGINT NOT NULL COMMENT '学院ID',
   `grade` INT DEFAULT NULL COMMENT '年级(为空则为学院总额)',
   `allocated_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00 COMMENT '分配金额',
@@ -551,7 +557,8 @@ CREATE TABLE `gc_subsidy_allocation` (
   `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `is_deleted` TINYINT(1) DEFAULT 0 COMMENT '是否逻辑删除',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_batch_college_grade` (`batch_id`, `college_id`, `grade`)
+  UNIQUE KEY `uk_batch_college_grade` (`batch_id`, `college_id`, `grade`),
+  KEY `idx_college_id` (`college_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='补助金额分配表';
 
 -- 30. 补助申请表
