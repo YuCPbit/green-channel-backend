@@ -1,3 +1,9 @@
+package edu.workstudy.entity;
+
+import com.baomidou.mybatisplus.annotation.*;
+import lombok.Data;
+import java.time.LocalDateTime;
+
 @Data
 @TableName("gc_work_study_position")
 public class WorkStudyPosition {

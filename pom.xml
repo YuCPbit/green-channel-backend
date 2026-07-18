@@ -10,7 +10,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.1.0</version>
+        <version>3.2.5</version>
         <relativePath/>
     </parent>
 
@@ -26,7 +26,9 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <!-- ✅ 统一依赖版本（核心） -->
-        <mybatis-plus.version>3.5.7</mybatis-plus.version>
+        <mybatis-plus.version>3.5.10.1</mybatis-plus.version>
+        <!-- ⭐ 关键修复：强制指定 mybatis-spring 版本，解决 Spring 6.1 兼容性 -->
+        <mybatis-spring.version>3.0.3</mybatis-spring.version>
         <hutool.version>5.8.25</hutool.version>
         <poi.version>5.5.1</poi.version>
     </properties>
@@ -35,13 +37,18 @@
     <modules>
         <module>workstudy</module>
         <!-- 后续 A/B/C 同学的模块在这里加 -->
-        <!-- <module>system</module> -->
-        <!-- <module>subsidy</module> -->
     </modules>
 
     <!-- ✅ 依赖版本管理（只定版本，不真正引入） -->
+    <!-- 这里只放那些不在 Spring Boot Parent 中管理的第三方库 -->
     <dependencyManagement>
         <dependencies>
+            <!-- ⭐ 关键修复：强制锁定 mybatis-spring 版本，防止被旧版本覆盖 -->
+            <dependency>
+                <groupId>org.mybatis</groupId>
+                <artifactId>mybatis-spring</artifactId>
+                <version>${mybatis-spring.version}</version>
+            </dependency>
 
             <!-- MyBatis-Plus -->
             <dependency>
@@ -63,11 +70,11 @@
                 <artifactId>poi-ooxml</artifactId>
                 <version>${poi.version}</version>
             </dependency>
-
         </dependencies>
     </dependencyManagement>
 
-    <!-- ✅ 所有模块都继承的公共依赖（少量、必要） -->
+    <!-- ✅ 所有模块都继承的公共依赖（真正引入） -->
+    <!-- Spring Boot 的 starter 都在这里，不需要写版本，因为 Spring Boot Parent 管着 -->
     <dependencies>
         <!-- Web（所有模块基本都要） -->
         <dependency>
@@ -88,7 +95,7 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- 加密工具（A/B/C/D 都可能用） -->
+        <!-- 加密工具 -->
         <dependency>
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-crypto</artifactId>
@@ -99,6 +106,18 @@
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <optional>true</optional>
+        </dependency>
+
+        <!-- 参数校验 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!-- Actuator -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
         <!-- 测试 -->
