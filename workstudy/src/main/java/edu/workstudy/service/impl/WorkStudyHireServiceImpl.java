@@ -63,11 +63,19 @@ public class WorkStudyHireServiceImpl
         apply.setStatus(4); // 4=已录用
         applyService.updateById(apply);
 
-        // 5. 【核心新增】更新岗位的已录用人数 (+1)
+        // 5. 更新岗位的已录用人数 (+1)
         // 使用 UpdateWrapper 进行字段的自增操作，避免并发问题
         boolean updated = updatePositionHiredCount(position.getId());
         if (!updated) {
             throw new RuntimeException("更新岗位录用人数失败，请重试");
+        }
+
+        // 6. 重新查询岗位，判断是否已满员
+        WorkStudyPosition updatedPosition = positionMapper.selectById(position.getId());
+        if (updatedPosition.getHiredCount() >= updatedPosition.getRecruitCount()) {
+            // 如果已满员，自动下架（status=3）
+            updatedPosition.setStatus(3); // 3=已下架
+            positionMapper.updateById(updatedPosition);
         }
 
         return hire.getId();
