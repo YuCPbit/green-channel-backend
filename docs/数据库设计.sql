@@ -652,8 +652,13 @@ INSERT INTO `gc_role` (`role_name`, `role_code`, `description`, `sort`) VALUES
 ('学生', 'STUDENT', '普通学生，申请资助服务', 5);
 
 -- 插入默认管理员账号 (密码为 admin123 假设哈希值为 xyz)
-INSERT INTO `gc_user` (`username`, `password_hash`, `real_name`, `user_type`, `status`) VALUES
-('admin', '$2a$10$xyz', '超级管理员', 5, 1);
+INSERT INTO `gc_user` (`username`, `password_hash`, `real_name`, `user_type`, `college_id`, `status`) VALUES
+('admin', '$2a$10$xyz', '超级管理员', 5, NULL, 1),
+('student01', '$2a$10$xyz', '测试学生', 1, 1, 1);
+
+-- 插入测试学生信息（计科2301班）
+INSERT INTO `gc_student` (`user_id`, `student_no`, `name`, `gender`, `id_card`, `enroll_year`, `college_id`, `major_id`, `class_id`, `student_type`) VALUES
+(2, 'student01', '测试学生', 1, 'dev_id_card_encrypted', 2023, 1, 1, 1, '本科');
 
 -- 插入默认字典值
 INSERT INTO `gc_dictionary` (`dict_type_code`, `dict_type_name`, `item_code`, `item_name`, `sort`) VALUES

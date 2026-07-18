@@ -1,8 +1,15 @@
-package edu.greenchannel.subsidy;
+package edu.greenchannel.subsidy.service;
 
 import edu.greenchannel.auth.CurrentUser;
 import edu.greenchannel.common.BusinessException;
 import edu.greenchannel.common.PageResult;
+import edu.greenchannel.subsidy.entity.SubsidyApplyRecord;
+import edu.greenchannel.subsidy.dto.response.SubsidyApplyView;
+import edu.greenchannel.subsidy.entity.SubsidyReviewRecord;
+import edu.greenchannel.subsidy.dto.response.SubsidyReviewView;
+import edu.greenchannel.subsidy.dto.request.SubsidyApplyRequest;
+import edu.greenchannel.subsidy.dto.request.SubsidyReviewRequest;
+import edu.greenchannel.subsidy.repository.SubsidyApplyRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -194,27 +201,31 @@ public class SubsidyApplyService {
     private void handlePass(SubsidyApplyRecord apply, int reviewerRole, SubsidyReviewRequest request) {
         switch (reviewerRole) {
             case SubsidyReviewRecord.ROLE_TUTOR -> {
-                // Counselor pass: check grade quota, advance to college review
+                // Counselor pass: validate grade quota, advance to college review
                 if (request.suggestAmount() == null || request.suggestAmount().compareTo(BigDecimal.ZERO) <= 0) {
                     throw new BusinessException(40001, "请填写建议补助金额");
                 }
-                checkAndDeductGradeQuota(apply);
+                checkGradeQuota(apply, request.suggestAmount());
                 repository.updateApplyStatus(apply.id(), SubsidyApplyRecord.STATUS_PENDING_COLLEGE, request.suggestAmount());
             }
             case SubsidyReviewRecord.ROLE_COLLEGE -> {
-                // College pass: check college quota, advance to school review
+                // College pass: validate college quota, advance to school review
                 if (request.suggestAmount() == null || request.suggestAmount().compareTo(BigDecimal.ZERO) <= 0) {
                     throw new BusinessException(40001, "请填写建议补助金额");
                 }
-                checkAndDeductCollegeQuota(apply);
+                checkCollegeQuota(apply, request.suggestAmount());
                 repository.updateApplyStatus(apply.id(), SubsidyApplyRecord.STATUS_PENDING_SCHOOL, request.suggestAmount());
             }
             case SubsidyReviewRecord.ROLE_SCHOOL -> {
-                // School pass: final approval
-                BigDecimal finalAmount = request.suggestAmount() != null ? request.suggestAmount() : apply.applyAmount();
-                if (finalAmount.compareTo(BigDecimal.ZERO) <= 0) {
+                // School pass: final approval — deduct both grade and college quotas atomically
+                BigDecimal finalAmount = request.suggestAmount() != null
+                        ? request.suggestAmount()
+                        : apply.approvedAmount();
+                if (finalAmount == null || finalAmount.compareTo(BigDecimal.ZERO) <= 0) {
                     throw new BusinessException(40001, "最终发放金额必须大于0");
                 }
+                deductGradeQuota(apply, finalAmount);
+                deductCollegeQuota(apply, finalAmount);
                 repository.updateApplyStatus(apply.id(), SubsidyApplyRecord.STATUS_APPROVED, finalAmount);
             }
             default -> throw new BusinessException(40001, "无效的审核角色");
@@ -320,22 +331,42 @@ public class SubsidyApplyService {
         }
     }
 
-    private void checkAndDeductGradeQuota(SubsidyApplyRecord apply) {
+    private void checkGradeQuota(SubsidyApplyRecord apply, BigDecimal amount) {
         var studentInfo = repository.getStudentInfo(apply.studentId())
                 .orElseThrow(() -> new BusinessException(40400, "学生档案不存在"));
         var gradeAlloc = repository.findGradeAllocation(apply.batchId(), studentInfo.collegeId(), studentInfo.enrollYear())
                 .orElseThrow(() -> new BusinessException(40900, "该年级尚未分配补助额度，请联系学院管理员"));
-        if (!repository.incrementGradeAllocation(gradeAlloc.id(), apply.applyAmount())) {
+        if (gradeAlloc.usedAmount().add(amount).compareTo(gradeAlloc.allocatedAmount()) > 0) {
             throw new BusinessException(40900, "年级补助额度不足，请联系学院管理员");
         }
     }
 
-    private void checkAndDeductCollegeQuota(SubsidyApplyRecord apply) {
+    private void checkCollegeQuota(SubsidyApplyRecord apply, BigDecimal amount) {
         var studentInfo = repository.getStudentInfo(apply.studentId())
                 .orElseThrow(() -> new BusinessException(40400, "学生档案不存在"));
         var collegeAlloc = repository.findCollegeAllocation(apply.batchId(), studentInfo.collegeId())
                 .orElseThrow(() -> new BusinessException(40900, "该学院尚未分配补助额度，请联系学校资助中心"));
-        if (!repository.incrementCollegeAllocation(collegeAlloc.id(), apply.applyAmount())) {
+        if (collegeAlloc.usedAmount().add(amount).compareTo(collegeAlloc.allocatedAmount()) > 0) {
+            throw new BusinessException(40900, "学院补助额度不足，请联系学校资助中心");
+        }
+    }
+
+    private void deductGradeQuota(SubsidyApplyRecord apply, BigDecimal amount) {
+        var studentInfo = repository.getStudentInfo(apply.studentId())
+                .orElseThrow(() -> new BusinessException(40400, "学生档案不存在"));
+        var gradeAlloc = repository.findGradeAllocation(apply.batchId(), studentInfo.collegeId(), studentInfo.enrollYear())
+                .orElseThrow(() -> new BusinessException(40900, "该年级尚未分配补助额度，请联系学院管理员"));
+        if (!repository.incrementGradeAllocation(gradeAlloc.id(), amount)) {
+            throw new BusinessException(40900, "年级补助额度不足，请联系学院管理员");
+        }
+    }
+
+    private void deductCollegeQuota(SubsidyApplyRecord apply, BigDecimal amount) {
+        var studentInfo = repository.getStudentInfo(apply.studentId())
+                .orElseThrow(() -> new BusinessException(40400, "学生档案不存在"));
+        var collegeAlloc = repository.findCollegeAllocation(apply.batchId(), studentInfo.collegeId())
+                .orElseThrow(() -> new BusinessException(40900, "该学院尚未分配补助额度，请联系学校资助中心"));
+        if (!repository.incrementCollegeAllocation(collegeAlloc.id(), amount)) {
             throw new BusinessException(40900, "学院补助额度不足，请联系学校资助中心");
         }
     }

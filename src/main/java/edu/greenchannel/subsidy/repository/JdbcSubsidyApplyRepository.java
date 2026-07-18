@@ -1,6 +1,10 @@
-package edu.greenchannel.subsidy;
+package edu.greenchannel.subsidy.repository;
 
 import edu.greenchannel.common.PageResult;
+import edu.greenchannel.subsidy.entity.SubsidyApplyRecord;
+import edu.greenchannel.subsidy.dto.response.SubsidyApplyView;
+import edu.greenchannel.subsidy.entity.SubsidyReviewRecord;
+import edu.greenchannel.subsidy.dto.response.SubsidyReviewView;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.GeneratedKeyHolder;

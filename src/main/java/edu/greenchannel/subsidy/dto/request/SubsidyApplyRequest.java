@@ -1,4 +1,4 @@
-package edu.greenchannel.subsidy;
+package edu.greenchannel.subsidy.dto.request;
 
 import java.math.BigDecimal;
 import java.util.List;

@@ -1,4 +1,4 @@
-package edu.greenchannel.subsidy;
+package edu.greenchannel.subsidy.dto.response;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;

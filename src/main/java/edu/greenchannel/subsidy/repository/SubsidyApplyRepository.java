@@ -1,6 +1,10 @@
-package edu.greenchannel.subsidy;
+package edu.greenchannel.subsidy.repository;
 
 import edu.greenchannel.common.PageResult;
+import edu.greenchannel.subsidy.entity.SubsidyApplyRecord;
+import edu.greenchannel.subsidy.dto.response.SubsidyApplyView;
+import edu.greenchannel.subsidy.entity.SubsidyReviewRecord;
+import edu.greenchannel.subsidy.dto.response.SubsidyReviewView;
 
 import java.util.List;
 import java.util.Optional;
