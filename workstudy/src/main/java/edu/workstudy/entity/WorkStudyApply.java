@@ -14,12 +14,14 @@ public class WorkStudyApply {
     private Long studentId;
     private String applyNo;
     private String selfIntro;
-    private Integer interviewStatus; // 0-待面试 1-已面试 2-通过 3-不通过
-    private Integer status; // 1-已报名 2-面试中 3-待录用 4-已录用 5-未录用
+    private String availableTime;
+    private String skills;
+    private String applyReason;
+    private String tutorRecommend;
+    private Integer interviewStatus; // 0-待面试 1-已面试 2-面试通过 3-面试不通过
+    private Integer status; // 1-已报名 2-面试中 3-待录用审批 4-已录用 5-未录用
     private LocalDateTime applyTime;
-    @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
-    @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
     @TableLogic
     private Integer isDeleted;

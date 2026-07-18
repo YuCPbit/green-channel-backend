@@ -1,19 +1,33 @@
 package edu.workstudy.controller;
 
+import edu.workstudy.common.Result;
+import edu.workstudy.entity.WorkStudyApply;
 import edu.workstudy.service.WorkStudyApplyService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/v1/applies")
+@RequestMapping("/api/workstudy/apply")
 public class WorkStudyApplyController {
 
-    @Autowired
-    private WorkStudyApplyService applyService;
+    private final WorkStudyApplyService applyService;
 
-    @PostMapping
-    public String apply(@RequestParam Long positionId,
-                        @RequestHeader("X-User-Id") Long studentId) {
-        return applyService.apply(positionId, studentId);
+    public WorkStudyApplyController(WorkStudyApplyService applyService) {
+        this.applyService = applyService;
+    }
+
+    @PostMapping("/submit")
+    public Result<Long> submitApply(
+            @RequestParam Long positionId,
+            @RequestParam Long studentId,
+            @RequestBody WorkStudyApply applyInfo) {
+        Long applyId = applyService.applyForPosition(positionId, studentId, applyInfo);
+        return Result.success(applyId);
+    }
+
+    @GetMapping("/my-applications")
+    public Result<?> myApplications(@RequestParam Long studentId) {
+        return Result.success(applyService.lambdaQuery()
+                .eq(WorkStudyApply::getStudentId, studentId)
+                .list());
     }
 }

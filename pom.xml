@@ -25,7 +25,6 @@
         <java.version>17</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-        <!-- ✅ 统一依赖版本（核心） -->
         <mybatis-plus.version>3.5.10.1</mybatis-plus.version>
         <!-- ⭐ 关键修复：强制指定 mybatis-spring 版本，解决 Spring 6.1 兼容性 -->
         <mybatis-spring.version>3.0.3</mybatis-spring.version>
