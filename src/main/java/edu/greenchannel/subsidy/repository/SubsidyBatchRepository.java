@@ -17,7 +17,6 @@ public interface SubsidyBatchRepository extends JpaRepository<SubsidyBatch, Long
                                        @Param("status") BatchStatus status,
                                        Pageable pageable);
 
-    /** 统计某学年下指定类型的批次数量，排除指定ID（编辑时使用） */
     @Query("SELECT COUNT(b) FROM SubsidyBatch b WHERE b.academicYear = :academicYear AND b.subsidyType = :subsidyType AND (:excludeId IS NULL OR b.id <> :excludeId)")
     long countByAcademicYearAndSubsidyType(@Param("academicYear") String academicYear,
                                            @Param("subsidyType") Integer subsidyType,

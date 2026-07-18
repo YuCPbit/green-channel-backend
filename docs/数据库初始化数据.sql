@@ -133,21 +133,13 @@ ON DUPLICATE KEY UPDATE
   need_student = VALUES(need_student), approval_level = VALUES(approval_level),
   form_template = VALUES(form_template), sort = VALUES(sort), status = VALUES(status), is_deleted = 0;
 
--- ***********************
--- 初始化：组织架构 → 补助批次 → 资金分配
--- ***********************
-
--- ==========================================
 -- 1. 学校
--- ==========================================
 INSERT INTO gc_school (id, school_name, school_code, address, contact_phone, introduction)
 VALUES
-  (1, '四川大学', 'DEMO_UNIV', 'XX省XX市XX区XX路100号', '010-12345678', '示范大学是一所综合性大学，本数据仅用于开发联调。')
+  (1, '四川大学', 'DEMO_UNIV', '四川省成都市', '12345678', '四川大学是一所综合性大学')
 ON DUPLICATE KEY UPDATE school_name = VALUES(school_name), school_code = VALUES(school_code), is_deleted = 0;
 
--- ==========================================
 -- 2. 学院
--- ==========================================
 INSERT INTO gc_college (id, school_id, college_name, college_code, contact_person, contact_phone)
 VALUES
   (1, 1, '计算机科学与技术学院', 'COLLEGE_CS', '李老师', '13800000001'),
@@ -155,9 +147,7 @@ VALUES
   (3, 1, '经济管理学院',         'COLLEGE_EM',   '张老师', '13800000003')
 ON DUPLICATE KEY UPDATE college_name = VALUES(college_name), college_code = VALUES(college_code), contact_person = VALUES(contact_person), contact_phone = VALUES(contact_phone), is_deleted = 0;
 
--- ==========================================
 -- 3. 专业
--- ==========================================
 INSERT INTO gc_major (id, college_id, major_name, major_code, school_length, degree_type)
 VALUES
   (1, 1, '计算机科学与技术', 'CS_01', 4, '工学学士'),
@@ -169,9 +159,7 @@ VALUES
   (7, 3, '经济学',           'EM_02', 4, '经济学学士')
 ON DUPLICATE KEY UPDATE major_name = VALUES(major_name), major_code = VALUES(major_code), is_deleted = 0;
 
--- ==========================================
 -- 4. 班级（grade 字段用于年级下拉列表数据源）
--- ==========================================
 INSERT INTO gc_class (id, major_id, grade, class_name, class_code, tutor_id)
 VALUES
   -- 计算机学院 — 2023 / 2024 / 2025 三个年级
@@ -197,22 +185,16 @@ VALUES
   (18, 7, 2025, '经济2501班', 'EC2501', 2)
 ON DUPLICATE KEY UPDATE class_name = VALUES(class_name), class_code = VALUES(class_code), is_deleted = 0;
 
--- ==========================================
 -- 5. 补助批次（覆盖草稿/进行中/已结束三种状态）
 --    subsidy_type: 1=集中批次  2=动态-大病补助  3=动态-受灾补助  4=动态-其他补助
--- ==========================================
 INSERT INTO gc_subsidy_batch (id, batch_name, academic_year, subsidy_type, total_amount, apply_start_time, apply_end_time, college_submit_end_time, status, creator_id)
 VALUES
-  -- 已开始的集中批次（可测试 ACTIVE 状态下的额度分配规则）
   (1, '2026年秋季集中批次', '2025-2026', 1, 100000.00,
    '2026-08-01 00:00:00', '2026-08-31 23:59:59', '2026-08-10 23:59:59', 1, 5),
-  -- 草稿批次（可测试 DRAFT 状态：学院可提前向年级分配额度）
   (2, '2026年高温补助', '2026-2027', 3, 80000.00,
    '2026-06-01 00:00:00', '2026-07-31 23:59:59', '2026-07-10 23:59:59', 0, 5),
-  -- 已结束批次（历史记录）
   (3, '2025年秋季集中批次', '2024-2025', 1, 60000.00,
    '2025-08-01 00:00:00', '2025-08-31 23:59:59', '2025-08-10 23:59:59', 2, 5),
-  -- 动态批次
   (4, '2026年大病补助批次', '2025-2026', 2, 30000.00,
    '2026-09-01 00:00:00', '2026-12-31 23:59:59', '2026-12-01 23:59:59', 1, 5)
 ON DUPLICATE KEY UPDATE
@@ -220,9 +202,7 @@ ON DUPLICATE KEY UPDATE
   apply_start_time = VALUES(apply_start_time), apply_end_time = VALUES(apply_end_time),
   college_submit_end_time = VALUES(college_submit_end_time), status = VALUES(status), is_deleted = 0;
 
--- ==========================================
 -- 6. 学校 → 学院 额度分配（allocator_role=1, target_type=1）
--- ==========================================
 INSERT INTO gc_subsidy_allocation (batch_id, allocator_role, target_type, source_id, target_id, college_id, grade, allocated_amount, used_amount)
 VALUES
   -- 批次1（ACTIVE）：学校向三个学院分配共 90000，剩余 10000 可用余额
@@ -234,9 +214,7 @@ VALUES
   (4, 1, 1, 0, 2, 2, NULL, 10000.00, 0.00)
 ON DUPLICATE KEY UPDATE allocated_amount = VALUES(allocated_amount), used_amount = VALUES(used_amount), is_deleted = 0;
 
--- ==========================================
 -- 7. 学院 → 年级 额度分配（allocator_role=2, target_type=2）
--- ==========================================
 INSERT INTO gc_subsidy_allocation (batch_id, allocator_role, target_type, source_id, target_id, college_id, grade, allocated_amount, used_amount)
 VALUES
   -- 批次1 / 计算机学院：向 2023/2024/2025 三个年级分配共 35000（余额 15000）
