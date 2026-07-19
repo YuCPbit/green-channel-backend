@@ -16,28 +16,51 @@ public class WorkStudyAttendance {
 
     /** 录用记录ID */
     private Long hireId;
+
     /** 学生ID */
     private Long studentId;
+
     /** 考勤日期 */
     private LocalDate attendanceDate;
+
     /** 签到时间 */
     private LocalDateTime checkInTime;
+
     /** 签退时间 */
     private LocalDateTime checkOutTime;
-    /** 工作时长（小时） */
-    private BigDecimal workHours;
-    /** 打卡方式: 1-定位打卡 2-二维码扫码 */
-    private Integer checkType;
-    /** 签到定位信息 */
+
+    /** 签到地点 */
     private String checkInLocation;
-    /** 状态: 1-正常 2-迟到 3-早退 4-请假 5-旷工 6-补打卡待审批 7-补打卡已通过 */
+
+    /** 考勤类型：1-打卡 2-请假 3-补卡 */
+    private Integer attendanceType;
+
+    /** 请假类型：1-病假 2-事假 3-公假 */
+    private Integer leaveType;
+
+    /** 审批状态：0-无需审批 1-待审批 2-已通过 3-已驳回 */
+    private Integer approvalStatus;
+
+    /** 审批人ID */
+    private Long approverId;
+
+    /** 审批时间 */
+    private LocalDateTime approveTime;
+
+    /** 迟到分钟数 */
+    private Integer lateMinutes;
+
+    /** 早退分钟数 */
+    private Integer earlyMinutes;
+
+    /** 工时（小时） */
+    private BigDecimal workHours;
+
+    /** 状态：1-正常 2-迟到 3-迟到+早退 4-请假 5-早退 6-旷工 */
     private Integer status;
-    /** 备注 */
+
+    /** 备注（请假/补卡原因） */
     private String remark;
-    /** 用工部门确认人ID */
-    private Long confirmedBy;
-    /** 确认时间 */
-    private LocalDateTime confirmTime;
 
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
