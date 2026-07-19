@@ -185,7 +185,7 @@ public class WorkStudyAttendanceServiceImpl
         LambdaQueryWrapper<WorkStudyAttendance> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(WorkStudyAttendance::getHireId, hireId)
                 .apply("YEAR(attendance_date) = {0} AND MONTH(attendance_date) = {1}", year, month)
-                .eq(WorkStudyAttendance::getApprovalStatus, 2); // 只统计已审批通过的
+                .eq(WorkStudyAttendance::getApprovalStatus, 2);
 
         var list = list(wrapper);
 
@@ -193,8 +193,9 @@ public class WorkStudyAttendanceServiceImpl
                 .map(WorkStudyAttendance::getWorkHours)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+        // 与核算逻辑保持一致
         long workDays = list.stream()
-                .filter(a -> a.getStatus() == 1 || a.getStatus() == 2) // 正常或迟到
+                .filter(a -> a.getStatus() == 1 || a.getStatus() == 2 || a.getStatus() == 3 || a.getStatus() == 5)
                 .count();
 
         return new AttendanceSummary(totalHours, (int) workDays);

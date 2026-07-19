@@ -53,6 +53,9 @@ public class WorkStudyHireServiceImpl
         hire.setHireDate(LocalDate.now());
         hire.setApprovedBy(approverId);
         hire.setApproveTime(LocalDateTime.now());
+
+        hire.setSalaryRate(position.getSalaryRate());
+
         save(hire);
 
         apply.setStatus(4);

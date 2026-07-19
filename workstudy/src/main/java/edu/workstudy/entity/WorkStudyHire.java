@@ -3,6 +3,7 @@ package edu.workstudy.entity;
 import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -25,6 +26,8 @@ public class WorkStudyHire {
     private LocalDate hireDate;
     /** 离岗日期 */
     private LocalDate leaveDate;
+    /** 录用时的薪酬标准（快照，防止岗位调整后历史薪酬变化） */
+    private BigDecimal salaryRate;
     /** 离岗原因 */
     private String leaveReason;
     /** 录用审批人ID */

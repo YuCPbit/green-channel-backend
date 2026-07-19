@@ -45,6 +45,9 @@ public class WorkStudySalaryServiceImpl
         );
 
         int count = 0;
+        LocalDate start = yearMonth.atDay(1);
+        LocalDate end = yearMonth.atEndOfMonth();
+
         for (WorkStudyHire hire : hires) {
 
             long existingCount = baseMapper.selectCount(
@@ -53,34 +56,34 @@ public class WorkStudySalaryServiceImpl
                             .eq(WorkStudySalary::getSalaryYear, yearMonth.getYear())
                             .eq(WorkStudySalary::getSalaryMonth, yearMonth.getMonthValue())
             );
-            if (existingCount > 0) {
-                continue; // 已核算过，跳过
-            }
+            if (existingCount > 0) continue;
 
-            LocalDate start = yearMonth.atDay(1);
-            LocalDate end = yearMonth.atEndOfMonth();
-
-            // 计算总工时
-            BigDecimal totalHours = attendanceMapper.selectList(
-                            new LambdaQueryWrapper<WorkStudyAttendance>()
-                                    .eq(WorkStudyAttendance::getHireId, hire.getId())
-                                    .between(WorkStudyAttendance::getAttendanceDate, start, end)
-                                    .eq(WorkStudyAttendance::getStatus, 1)
-                    ).stream()
-                    .map(a -> a.getWorkHours() != null ? a.getWorkHours() : BigDecimal.ZERO)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-            long workDays = attendanceMapper.selectCount(
+            // 考勤查询
+            List<WorkStudyAttendance> attendances = attendanceMapper.selectList(
                     new LambdaQueryWrapper<WorkStudyAttendance>()
                             .eq(WorkStudyAttendance::getHireId, hire.getId())
                             .between(WorkStudyAttendance::getAttendanceDate, start, end)
-                            .eq(WorkStudyAttendance::getStatus, 1)
+                            // 包含：正常、迟到、迟到+早退、早退
+                            .in(WorkStudyAttendance::getStatus, 1, 2, 3, 5)
+                            // 只统计已审批通过的
+                            .eq(WorkStudyAttendance::getApprovalStatus, 2)
             );
+
+            BigDecimal totalHours = attendances.stream()
+                    .map(a -> a.getWorkHours() != null ? a.getWorkHours() : BigDecimal.ZERO)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            long workDays = attendances.size();
 
             WorkStudyPosition position = positionMapper.selectById(hire.getPositionId());
             if (position == null) continue;
 
-            BigDecimal salaryRate = position.getSalaryRate();
+            // 使用录用快照，而不是岗位当前费率
+            BigDecimal salaryRate = hire.getSalaryRate();
+            if (salaryRate == null) {
+                salaryRate = position.getSalaryRate(); // 兜底（老数据）
+            }
+
             BigDecimal calculatedAmount = totalHours.multiply(salaryRate);
 
             WorkStudySalary salary = new WorkStudySalary();
@@ -91,7 +94,7 @@ public class WorkStudySalaryServiceImpl
             salary.setSalaryMonth(yearMonth.getMonthValue());
             salary.setTotalWorkHours(totalHours);
             salary.setTotalWorkDays((int) workDays);
-            salary.setSalaryRate(salaryRate);
+            salary.setSalaryRate(salaryRate); // 存快照
             salary.setCalculatedAmount(calculatedAmount);
             salary.setStatus(1);
 
