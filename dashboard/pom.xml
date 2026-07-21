@@ -58,8 +58,6 @@
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
-        <!-- ================= D 同学特有依赖 ================= -->
-
         <!-- WebSocket 支持 (用于大屏实时刷新 FR-3.14-002) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -92,6 +90,8 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+
+
     </dependencies>
 
     <!-- 构建插件 -->

@@ -36,4 +36,11 @@ public interface DashboardMapper {
      * FR-3.14-004: 年度趋势对比
      */
     List<Map<String, Object>> selectYearlyTrend(@Param("currentYear") String currentYear);
+
+    // ===== 勤工助学统计方法 =====
+    List<Map<String, Object>> selectWsPositionStats();
+    List<Map<String, Object>> selectWsStudentByCollegeStats();
+    List<Map<String, Object>> selectWsStudentByPovertyStats();
+    List<Map<String, Object>> selectWsSalaryMonthlyStats();
+    List<Map<String, Object>> selectWsSalaryTermStats();
 }

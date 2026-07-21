@@ -61,4 +61,45 @@ public class DashboardController {
         result.put("trend", dashboardService.getYearlyTrend(currentYear));
         return Result.success(result);
     }
+
+    // ===== 勤工助学统计接口 =====
+    /**
+     * 岗位维度统计
+     */
+    @GetMapping("/ws/position-stats")
+    public Result<List<Map<String, Object>>> getWsPositionStats() {
+        return Result.success(dashboardService.getWsPositionStats());
+    }
+
+    /**
+     * 学生维度统计（按学院）
+     */
+    @GetMapping("/ws/student-college-stats")
+    public Result<List<Map<String, Object>>> getWsStudentByCollegeStats() {
+        return Result.success(dashboardService.getWsStudentByCollegeStats());
+    }
+
+    /**
+     * 学生维度统计（按贫困等级）
+     */
+    @GetMapping("/ws/student-poverty-stats")
+    public Result<List<Map<String, Object>>> getWsStudentByPovertyStats() {
+        return Result.success(dashboardService.getWsStudentByPovertyStats());
+    }
+
+    /**
+     * 薪酬维度统计（月度）
+     */
+    @GetMapping("/ws/salary-monthly-stats")
+    public Result<List<Map<String, Object>>> getWsSalaryMonthlyStats() {
+        return Result.success(dashboardService.getWsSalaryMonthlyStats());
+    }
+
+    /**
+     * 薪酬维度统计（学期）
+     */
+    @GetMapping("/ws/salary-term-stats")
+    public Result<List<Map<String, Object>>> getWsSalaryTermStats() {
+        return Result.success(dashboardService.getWsSalaryTermStats());
+    }
 }
