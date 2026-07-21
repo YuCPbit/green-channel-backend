@@ -9,6 +9,6 @@ public class WorkStudyStatsVO {
     private Long totalApplications;   // 总报名人次
     private Long totalHired;          // 总录用人数
     private Double attendanceRate;    // 本月出勤率
-    private BigDecimal monthlySalary; // 本月薪酬总额
+    private BigDecimal monthlySalary; // 本月累计薪酬
     private Double budgetExecRate;    // 预算执行率
 }

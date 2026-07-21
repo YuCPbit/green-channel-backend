@@ -13,11 +13,4 @@ public class DashboardStatsVO {
     private BigDecimal totalSubsidyAmount; // 补助发放总额
     private Long giftPackCount;            // 大礼包发放总数
     private LocalDateTime updateTime;      // 数据更新时间
-
-    // ========== 勤工助学模块指标 ==========
-    private Long wsTotalPositions;         // 总岗位数
-    private Long wsTotalApplications;     // 总报名人次
-    private Long wsTotalHired;            // 总录用人数
-    private Double wsAttendanceRate;      // 本月出勤率
-    private BigDecimal wsMonthlySalary;   // 本月累计薪酬
 }
