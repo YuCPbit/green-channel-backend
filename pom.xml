@@ -35,7 +35,7 @@
     <!-- ✅ 子模块声明 -->
     <modules>
         <module>workstudy</module>
-        <!-- 后续 A/B/C 同学的模块在这里加 -->
+        <module>dashboard</module>
     </modules>
 
     <!-- ✅ 依赖版本管理（只定版本，不真正引入） -->
