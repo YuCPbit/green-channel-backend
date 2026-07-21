@@ -21,35 +21,28 @@ public class DashboardController {
     private DashboardService dashboardService;
 
     /**
-     * FR-3.14-002: 核心指标接口
+     * FR-3.14-002: 统一核心指标接口
+     * module: basic(基础), workstudy(勤工助学)
      */
     @GetMapping("/stats")
-    public Result<DashboardStatsVO> getStats() {
-        return Result.success(dashboardService.getCachedStats());
+    public Result<DashboardStatsVO> getStats(
+            @RequestParam(defaultValue = "basic") String module) {
+        return Result.success(dashboardService.getStatsByModule(module));
     }
 
     /**
-     * FR-3.14-003: 学院对比
+     * FR-3.14-003: 统一图表数据接口
      */
-    @GetMapping("/college-compare")
-    public Result<List<CollegeCompareVO>> getCollegeCompare() {
-        return Result.success(dashboardService.getCollegeComparison());
-    }
+    @GetMapping("/chart")
+    public Result<?> getChartData(
+            @RequestParam String module,
+            @RequestParam String type) {
 
-    /**
-     * FR-3.14-003: 生源地热力图
-     */
-    @GetMapping("/heatmap")
-    public Result<List<HeatmapVO>> getHeatmap() {
-        return Result.success(dashboardService.getOriginHeatmapData());
-    }
-
-    /**
-     * FR-3.14-003: 补助结构
-     */
-    @GetMapping("/subsidy-structure")
-    public Result<List<SubsidyStructureVO>> getSubsidyStructure() {
-        return Result.success(dashboardService.getSubsidyStructure());
+        return switch (module) {
+            case "basic" -> Result.success(getBasicChart(type));
+            case "workstudy" -> Result.success(getWorkStudyChart(type));
+            default -> Result.error(400, "未知模块");
+        };
     }
 
     /**
@@ -62,44 +55,25 @@ public class DashboardController {
         return Result.success(result);
     }
 
-    // ===== 勤工助学统计接口 =====
-    /**
-     * 岗位维度统计
-     */
-    @GetMapping("/ws/position-stats")
-    public Result<List<Map<String, Object>>> getWsPositionStats() {
-        return Result.success(dashboardService.getWsPositionStats());
+    // ========== 私有方法 ==========
+
+    private Object getBasicChart(String type) {
+        return switch (type) {
+            case "college-compare" -> dashboardService.getCollegeComparison();
+            case "heatmap" -> dashboardService.getOriginHeatmapData();
+            case "subsidy-structure" -> dashboardService.getSubsidyStructure();
+            default -> throw new IllegalArgumentException("未知图表类型");
+        };
     }
 
-    /**
-     * 学生维度统计（按学院）
-     */
-    @GetMapping("/ws/student-college-stats")
-    public Result<List<Map<String, Object>>> getWsStudentByCollegeStats() {
-        return Result.success(dashboardService.getWsStudentByCollegeStats());
-    }
-
-    /**
-     * 学生维度统计（按贫困等级）
-     */
-    @GetMapping("/ws/student-poverty-stats")
-    public Result<List<Map<String, Object>>> getWsStudentByPovertyStats() {
-        return Result.success(dashboardService.getWsStudentByPovertyStats());
-    }
-
-    /**
-     * 薪酬维度统计（月度）
-     */
-    @GetMapping("/ws/salary-monthly-stats")
-    public Result<List<Map<String, Object>>> getWsSalaryMonthlyStats() {
-        return Result.success(dashboardService.getWsSalaryMonthlyStats());
-    }
-
-    /**
-     * 薪酬维度统计（学期）
-     */
-    @GetMapping("/ws/salary-term-stats")
-    public Result<List<Map<String, Object>>> getWsSalaryTermStats() {
-        return Result.success(dashboardService.getWsSalaryTermStats());
+    private Object getWorkStudyChart(String type) {
+        return switch (type) {
+            case "position-stats" -> dashboardService.getWsPositionStats();
+            case "student-college-stats" -> dashboardService.getWsStudentByCollegeStats();
+            case "student-poverty-stats" -> dashboardService.getWsStudentByPovertyStats();
+            case "salary-monthly-stats" -> dashboardService.getWsSalaryMonthlyStats();
+            case "salary-term-stats" -> dashboardService.getWsSalaryTermStats();
+            default -> throw new IllegalArgumentException("未知图表类型");
+        };
     }
 }
