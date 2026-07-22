@@ -19,6 +19,10 @@ public class WebSocketService {
      * FR-3.14-002: 广播大屏数据
      */
     public void broadcastDashboardStats(DashboardStatsVO stats) {
-        messagingTemplate.convertAndSend("/topic/stats", stats);
+        broadcastModuleStats("base", stats);
+    }
+
+    public void broadcastModuleStats(String moduleCode, Object stats) {
+        messagingTemplate.convertAndSend("/topic/" + moduleCode + "/stats", stats);
     }
 }
