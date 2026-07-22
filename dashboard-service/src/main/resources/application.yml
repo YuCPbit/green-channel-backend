@@ -1,0 +1,5 @@
+spring:
+  application:
+    name: dashboard-service
+server:
+  port: ${SERVER_PORT:8085}
