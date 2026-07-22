@@ -1,38 +1,40 @@
 # 高校绿色通道系统
 
-前后端唯一仓库：后端采用 Java 17、Spring Boot 4.1.0、Maven 多模块和 MySQL，前端采用 Vue 3 与 Vite。
+本仓库是项目唯一集成仓库，但前后端保持独立工程：`backend/` 使用 Java 17、Spring Boot 4.1.0、Maven 多模块和 MySQL，`frontend/` 使用 Vue 3 与 Vite。两者分别安装、构建和启动，不存在前端作为后端 Maven 子模块的关系。
 
 ## 模块结构
 
 | 模块 | 默认端口 | 职责 | 当前状态 |
 | --- | ---: | --- | --- |
-| `common-api` | - | 公共响应、异常、用户上下文、权限注解和跨服务契约 | 已提取 |
-| `platform-service` | 8081 | 认证、学生、附件、字典、消息、外部集成、系统管理 | 已迁移，可运行 |
-| `gift-service` | 8082 | 绿色通道、大礼包、审核和领取 | B 的业务代码已迁移 |
-| `subsidy-service` | 8083 | 困难补助、资助方案、申诉、辅导员事务 | C 的业务代码已迁移 |
-| `workstudy-service` | 8084 | 勤工助学 | D 的业务代码已迁移 |
-| `dashboard-service` | 8085 | 看板、统计、模块化报表和 WebSocket 推送 | D 的业务代码及模块注册表已迁移 |
-| `gateway-service` | 8080 | 前端统一入口及五个后端服务的路由 | 已配置 Spring Cloud Gateway |
-| `frontend` | 5173 | 登录菜单和各业务页面，只通过 8080 网关访问后端 | 已并入唯一仓库 |
+| `backend/common-api` | - | 公共响应、异常、用户上下文、权限注解和跨服务契约 | 已提取 |
+| `backend/platform-service` | 8081 | 认证、学生、附件、字典、消息、外部集成、系统管理 | 已迁移，可运行 |
+| `backend/gift-service` | 8082 | 绿色通道、大礼包、审核和领取 | B 的业务代码已迁移 |
+| `backend/subsidy-service` | 8083 | 困难补助、资助方案、申诉、辅导员事务 | C 的业务代码已迁移 |
+| `backend/workstudy-service` | 8084 | 勤工助学 | D 的业务代码已迁移 |
+| `backend/dashboard-service` | 8085 | 看板、统计、模块化报表和 WebSocket 推送 | D 的业务代码及模块注册表已迁移 |
+| `backend/gateway-service` | 8080 | 前端统一入口及五个后端服务的路由 | 已配置 Spring Cloud Gateway |
+| `frontend` | 5173 | 登录菜单和各业务页面，只通过 8080 网关访问后端 | 独立 Vue 工程 |
 
-根目录 `pom.xml` 的 `packaging` 是 `pom`，只负责聚合模块和统一版本；每个模块都有自己的 `pom.xml`。这就是项目约定的“多个 Maven 子项目”，不再把全部代码打进同一个根 JAR。
+`backend/pom.xml` 的 `packaging` 是 `pom`，只负责聚合后端模块和统一版本；每个后端模块都有自己的 `pom.xml`。`frontend/` 不由 Maven 管理。
 
 ```text
-green-channel-backend/
-├── frontend/              # Vue 3 + Vite
-├── common-api/            # 后端公共契约
-├── *-service/             # 六个后端服务（含网关）
-├── docs/
-├── scripts/
-└── pom.xml
+<project-repository>/
+├── backend/               # 独立后端工程
+│   ├── pom.xml            # Maven 聚合父 POM
+│   ├── common-api/
+│   ├── *-service/         # 六个后端服务（含网关）
+│   └── scripts/
+├── frontend/              # 独立 Vue 3 + Vite 工程
+└── docs/                  # 项目公共文档
 ```
 
 ## 构建与启动
 
 1. 执行 `docs/03-数据库/数据库设计.sql` 和 `docs/03-数据库/数据库初始化数据.sql`。
-2. 在根目录验证所有模块：
+2. 进入后端目录验证所有后端模块：
 
    ```bash
+   cd backend
    mvn test
    ```
 
@@ -47,10 +49,10 @@ green-channel-backend/
    mvn -pl gateway-service spring-boot:run
    ```
 
-4. 启动前端：
+4. 从项目根目录启动前端：
 
    ```bash
-   cd frontend
+   cd ../frontend
    npm ci
    npm run dev
    ```
