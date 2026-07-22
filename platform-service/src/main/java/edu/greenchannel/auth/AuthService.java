@@ -27,7 +27,13 @@ public class AuthService {
         if (!passwordEncoder.matches(request.password(), account.passwordHash())) {
             throw new BusinessException(40100, "用户名或密码错误");
         }
-        CurrentUser currentUser = CurrentUser.from(account);
+        String primaryRoleName = account.roleNames().isEmpty()
+                ? account.userType().getDisplayName()
+                : account.roleNames().get(0);
+        CurrentUser currentUser = new CurrentUser(
+                account.id(), account.username(), account.realName(), account.userType().getCode(),
+                primaryRoleName, account.roleCodes(), account.permissionCodes(), account.menus()
+        );
         String token = tokenService.issue(currentUser);
         userRepository.updateLastLoginTime(account.id());
         return new LoginResponse(token, TokenService.TOKEN_TTL.toSeconds(), currentUser);
@@ -37,4 +43,3 @@ public class AuthService {
         return value == null || value.isBlank();
     }
 }
-
