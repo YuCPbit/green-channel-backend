@@ -6,12 +6,11 @@
 
 ## 1. 目标结构
 
-根项目是聚合父项目，不产生可执行 JAR。公共契约进入 `common-api`，各业务域进入独立服务模块，前端只调用 `gateway-service` 的 8080 端口。
+本后端仓库根项目是聚合父项目，不产生可执行 JAR。公共契约进入 `common-api`，各业务域进入独立服务模块。前端位于独立的 `green-channel-frontend` 仓库，只调用 `gateway-service` 的 8080 端口。
 
 ```text
 green-channel-backend/
 ├── pom.xml
-├── frontend/                   # 非 Maven 模块，前端统一入口
 ├── common-api/pom.xml
 ├── platform-service/pom.xml
 ├── gift-service/pom.xml
