@@ -8,6 +8,7 @@ import edu.greenchannel.gift.service.GiftPackQuotaService;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/gift/quota")
@@ -42,6 +43,13 @@ public class GiftPackQuotaController {
         Page<GiftPackQuota> page = new Page<>(pageNum, pageSize);
         IPage<GiftPackQuota> pageData = quotaService.page(page);
         return ApiResponse.success(pageData);
+    }
+
+    // 新增
+    @GetMapping("/list")
+    public ApiResponse<List<GiftPackQuota>> list() {
+        List<GiftPackQuota> list = quotaService.list();
+        return ApiResponse.success(list);
     }
 
     // 修改名额

@@ -10,11 +10,6 @@ import java.time.LocalDateTime;
 @Data
 @TableName("gc_gift_pack_apply")
 public class StudentApply {
-    public static final int PICKUP_PENDING = 0;
-    public static final int PICKUP_COMPLETED = 1;
-    public static final int PICKUP_EXCEPTION = 2;
-    public static final int PICKUP_REISSUED = 3;
-
     @TableId(type = IdType.AUTO)
     private Long id;
 
