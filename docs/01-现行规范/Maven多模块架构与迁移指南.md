@@ -11,6 +11,7 @@
 ```text
 green-channel-backend/
 ├── pom.xml
+├── frontend/                   # 非 Maven 模块，前端统一入口
 ├── common-api/pom.xml
 ├── platform-service/pom.xml
 ├── gift-service/pom.xml
