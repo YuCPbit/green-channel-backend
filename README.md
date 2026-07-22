@@ -40,4 +40,5 @@
    `PLATFORM_SERVICE_URL`、`GIFT_SERVICE_URL`、`SUBSIDY_SERVICE_URL`、`WORKSTUDY_SERVICE_URL`
    和 `DASHBOARD_SERVICE_URL` 覆盖服务地址。
 
-开发账号及协作约定参见 `docs/开发协作规范.md`，迁移规则参见 `docs/Maven多模块架构与迁移指南.md`。禁止提交真实学生数据、数据库密码或个人凭据。
+开发账号及协作约定参见 `docs/开发协作规范.md`，网关路径、公共契约和可执行请求参见
+`docs/服务接口与调用示例.md`，迁移规则参见 `docs/Maven多模块架构与迁移指南.md`。禁止提交真实学生数据、数据库密码或个人凭据。
