@@ -1,5 +1,30 @@
 spring:
   application:
     name: gateway-service
+  cloud:
+    gateway:
+      server:
+        webmvc:
+          routes:
+            - id: gift-service
+              uri: ${GIFT_SERVICE_URL:http://localhost:8082}
+              predicates:
+                - Path=/api/gift/**
+            - id: subsidy-service
+              uri: ${SUBSIDY_SERVICE_URL:http://localhost:8083}
+              predicates:
+                - Path=/api/subsidy/**
+            - id: workstudy-service
+              uri: ${WORKSTUDY_SERVICE_URL:http://localhost:8084}
+              predicates:
+                - Path=/api/workstudy/**
+            - id: dashboard-service
+              uri: ${DASHBOARD_SERVICE_URL:http://localhost:8085}
+              predicates:
+                - Path=/api/dashboard/**,/api/report/**,/ws/dashboard/**
+            - id: platform-service
+              uri: ${PLATFORM_SERVICE_URL:http://localhost:8081}
+              predicates:
+                - Path=/api/**
 server:
   port: ${SERVER_PORT:8080}
