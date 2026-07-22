@@ -26,8 +26,11 @@ public class WorkStudyModuleDataService implements ModuleDataService {
 
     @Override
     public Object getCoreStats() {
-        // 核心指标通常是固定的，简单处理
-        String sql = "SELECT COUNT(*) total FROM work_study_positions";
+        String sql = """
+        SELECT COUNT(*) total
+        FROM gc_work_study_position
+        WHERE is_deleted = 0
+        """;
         return dynamicQueryMapper.execute(sql).get(0);
     }
 
@@ -38,23 +41,23 @@ public class WorkStudyModuleDataService implements ModuleDataService {
     }
 
     @Override
+
     public List<Map<String, Object>> getReportData(String reportType, Map<String, Object> filters) {
-        // 1. 获取安全的列名 (SELECT 部分)
-        String columns = fieldWhiteList.getSafeColumns("workstudy_" + reportType, null);
 
-        // 2. 拼装 FROM 和 JOIN (模块私有逻辑)
-        String fromJoin = "FROM work_study_students wss " +
-                "LEFT JOIN student s ON wss.stu_id = s.id " +
-                "LEFT JOIN department d ON wss.dept_id = d.id";
+// 1. 只查单表，确保肯定有数据且语法简单
 
-        // 3. 拼装 WHERE (根据 filters)
-        String where = "WHERE 1=1";
-        // if (filters.containsKey("month")) where += " AND month = " + filters.get("month");
+        String columns = "p.id, p.position_name, p.department_name";
 
-        // 4. 生成最终SQL
+        String fromJoin = "FROM gc_work_study_position p";
+
+        String where = "WHERE p.is_deleted = 0";
+
         String finalSql = "SELECT " + columns + " " + fromJoin + " " + where;
 
-        // 5. 执行
+// 打印出来确认一下
+        System.out.println("【TEST SQL】" + finalSql);
+
         return dynamicQueryMapper.execute(finalSql);
+
     }
 }

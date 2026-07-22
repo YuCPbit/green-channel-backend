@@ -23,6 +23,7 @@ public class FieldWhiteList {
 
     static {
         // -------------------- 基础模块 (base) --------------------
+        /*
         registerModuleFields("base",
                 List.of("student_no", "name", "gender", "college_name", "major_name",
                         "class_name", "poverty_level", "phone", "apply_amount", "approved_amount"),
@@ -56,7 +57,7 @@ public class FieldWhiteList {
                 Arrays.asList("student_no", "name", "college_name", "poverty_level"));
         DEFAULT_REPORT_FIELDS.put("base_subsidy-list",
                 Arrays.asList("student_no", "name", "apply_amount", "approved_amount"));
-
+        */
         // -------------------- 勤工助学模块 (workstudy) --------------------
         registerModuleFields("workstudy",
                 List.of("ws_department", "ws_position_name", "ws_student_name", "ws_college_name",
