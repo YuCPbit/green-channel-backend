@@ -7,8 +7,11 @@ public record ApiResponse<T>(int code, String message, T data, Instant timestamp
         return new ApiResponse<>(0, "success", data, Instant.now());
     }
 
+    public static ApiResponse<Void> success() {
+        return success(null);
+    }
+
     public static ApiResponse<Void> failure(int code, String message) {
         return new ApiResponse<>(code, message, null, Instant.now());
     }
 }
-
