@@ -176,4 +176,98 @@
         ORDER BY b.academic_year DESC, b.semester DESC
     </select>
 
+    <select id="selectWsCoreStats" resultType="map">
+        SELECT
+            COUNT(*) AS total_positions,
+            COALESCE(SUM(recruit_count), 0) AS planned_recruits,
+            SUM(CASE WHEN status = 2 THEN 1 ELSE 0 END) AS active_positions
+        FROM gc_work_study_position
+        WHERE is_deleted = 0
+    </select>
+
+    <select id="selectWsPositionReport" resultType="map">
+        SELECT
+            p.department_name AS dept_name,
+            COUNT(DISTINCT p.id) AS position_count,
+            COALESCE(SUM(p.recruit_count), 0) AS plan_recruit_count,
+            COUNT(DISTINCT app.id) AS apply_count,
+            COUNT(DISTINCT h.id) AS hire_count,
+            COUNT(DISTINCT CASE WHEN h.hire_status = 1 THEN h.id END) AS on_job_count,
+            CASE WHEN SUM(p.recruit_count) &gt; 0
+                 THEN ROUND(COUNT(DISTINCT CASE WHEN h.hire_status = 1 THEN h.id END) * 100.0
+                            / SUM(p.recruit_count), 2)
+                 ELSE 0 END AS on_job_rate
+        FROM gc_work_study_position p
+        LEFT JOIN gc_work_study_apply app ON p.id = app.position_id AND app.is_deleted = 0
+        LEFT JOIN gc_work_study_hire h ON p.id = h.position_id AND h.is_deleted = 0
+        WHERE p.is_deleted = 0
+        <if test="batchId != null">AND p.batch_id = #{batchId}</if>
+        GROUP BY p.department_name
+        ORDER BY p.department_name
+    </select>
+
+    <select id="selectWsStudentReport" resultType="map">
+        SELECT
+            c.college_name AS college_name,
+            CASE s.poverty_level
+                WHEN 1 THEN '特别困难'
+                WHEN 2 THEN '困难'
+                WHEN 3 THEN '一般困难'
+                WHEN 4 THEN '不困难'
+                ELSE '未知'
+            END AS poverty_level_text,
+            COUNT(DISTINCT h.student_id) AS student_count
+        FROM gc_work_study_hire h
+        INNER JOIN gc_student s ON h.student_id = s.id AND s.is_deleted = 0
+        INNER JOIN gc_college c ON s.college_id = c.id AND c.is_deleted = 0
+        WHERE h.is_deleted = 0
+        <if test="collegeId != null">AND s.college_id = #{collegeId}</if>
+        GROUP BY c.college_name, s.poverty_level
+        ORDER BY c.college_name, s.poverty_level
+    </select>
+
+    <select id="selectWsSalaryReport" resultType="map">
+        SELECT
+            sal.salary_year AS salary_year,
+            sal.salary_month AS salary_month,
+            COUNT(DISTINCT sal.student_id) AS paid_student_count,
+            COALESCE(SUM(sal.final_amount), 0) AS total_salary_paid
+        FROM gc_work_study_salary sal
+        WHERE sal.is_deleted = 0 AND sal.status = 4
+        <if test="year != null">AND sal.salary_year = #{year}</if>
+        <if test="month != null">AND sal.salary_month = #{month}</if>
+        GROUP BY sal.salary_year, sal.salary_month
+        ORDER BY sal.salary_year DESC, sal.salary_month DESC
+    </select>
+
+    <select id="selectWsPositionDetail" resultType="map">
+        SELECT
+            p.department_name AS ws_department,
+            p.position_name AS ws_position_name,
+            s.name AS ws_student_name,
+            c.college_name AS ws_college_name,
+            s.poverty_level AS ws_poverty_level,
+            COALESCE(att.total_hours, 0) AS ws_work_hours,
+            COALESCE(sal.total_amount, 0) AS ws_salary
+        FROM gc_work_study_position p
+        LEFT JOIN gc_work_study_hire h ON p.id = h.position_id AND h.is_deleted = 0
+        LEFT JOIN gc_student s ON h.student_id = s.id AND s.is_deleted = 0
+        LEFT JOIN gc_college c ON s.college_id = c.id AND c.is_deleted = 0
+        LEFT JOIN (
+            SELECT hire_id, SUM(work_hours) AS total_hours
+            FROM gc_work_study_attendance
+            WHERE is_deleted = 0
+            GROUP BY hire_id
+        ) att ON h.id = att.hire_id
+        LEFT JOIN (
+            SELECT hire_id, SUM(final_amount) AS total_amount
+            FROM gc_work_study_salary
+            WHERE is_deleted = 0 AND status IN (3, 4)
+            GROUP BY hire_id
+        ) sal ON h.id = sal.hire_id
+        WHERE p.is_deleted = 0
+        <if test="status != null">AND p.status = #{status}</if>
+        ORDER BY p.id, h.student_id
+    </select>
+
 </mapper>

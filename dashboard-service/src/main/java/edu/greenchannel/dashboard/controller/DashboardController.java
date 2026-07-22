@@ -4,6 +4,7 @@ import edu.greenchannel.common.ApiResponse;
 import edu.greenchannel.auth.RequirePermission;
 import edu.greenchannel.dashboard.domain.vo.*;
 import edu.greenchannel.dashboard.service.DashboardService;
+import edu.greenchannel.dashboard.service.ModuleRegistry;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,13 +22,20 @@ public class DashboardController {
 
     @Autowired
     private DashboardService dashboardService;
+    @Autowired
+    private ModuleRegistry moduleRegistry;
 
     /**
      * FR-3.14-002: 核心指标接口
      */
     @GetMapping("/stats")
-    public ApiResponse<DashboardStatsVO> getStats() {
-        return ApiResponse.success(dashboardService.getCachedStats());
+    public ApiResponse<Object> getStats(@RequestParam(defaultValue = "base") String module) {
+        return ApiResponse.success(moduleRegistry.getModuleService(module).getCoreStats());
+    }
+
+    @GetMapping("/chart")
+    public ApiResponse<Object> getChartData(@RequestParam String module, @RequestParam String type) {
+        return ApiResponse.success(moduleRegistry.getModuleService(module).getChartData(type));
     }
 
     /**

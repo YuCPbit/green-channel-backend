@@ -4,6 +4,8 @@ import edu.greenchannel.common.ApiResponse;
 import edu.greenchannel.auth.RequirePermission;
 import edu.greenchannel.dashboard.domain.dto.CustomReportReqDTO;
 import edu.greenchannel.dashboard.service.ReportService;
+import edu.greenchannel.dashboard.service.ModuleDataService;
+import edu.greenchannel.dashboard.service.ModuleRegistry;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,13 +22,20 @@ public class ReportController {
 
     @Autowired
     private ReportService reportService;
+    @Autowired
+    private ModuleRegistry moduleRegistry;
 
     /**
      * FR-3.16-001: 获取自定义报表数据 (用于前端预览)
      */
     @PostMapping("/custom")
     public ApiResponse<List<Map<String, Object>>> getCustomReport(@Valid @RequestBody CustomReportReqDTO reqDTO) {
-        return ApiResponse.success(reportService.generateReport(reqDTO));
+        return previewReport(reqDTO);
+    }
+
+    @PostMapping("/preview")
+    public ApiResponse<List<Map<String, Object>>> previewReport(@Valid @RequestBody CustomReportReqDTO reqDTO) {
+        return ApiResponse.success(moduleService(reqDTO).getReportData(reqDTO));
     }
 
     /**
@@ -34,6 +43,22 @@ public class ReportController {
      */
     @PostMapping("/export/excel")
     public void exportExcel(@Valid @RequestBody CustomReportReqDTO reqDTO, HttpServletResponse response) throws IOException {
-        reportService.exportExcel(response, reqDTO);
+        export(reqDTO, response);
+    }
+
+    @PostMapping("/export")
+    public void export(@Valid @RequestBody CustomReportReqDTO reqDTO, HttpServletResponse response) throws IOException {
+        List<Map<String, Object>> data = moduleService(reqDTO).getReportData(reqDTO);
+        List<String> fields = reqDTO.getFields();
+        if ((fields == null || fields.isEmpty()) && !data.isEmpty()) {
+            fields = data.get(0).keySet().stream().toList();
+        }
+        reportService.exportRows(response, reqDTO, data, fields == null ? List.of() : fields);
+    }
+
+    private ModuleDataService moduleService(CustomReportReqDTO request) {
+        String module = request.getModule() == null || request.getModule().isBlank() ? "base" : request.getModule();
+        request.setModule(module);
+        return moduleRegistry.getModuleService(module);
     }
 }

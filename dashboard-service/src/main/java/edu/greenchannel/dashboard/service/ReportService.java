@@ -36,15 +36,31 @@ public class ReportService {
     public void exportExcel(HttpServletResponse response, CustomReportReqDTO reqDTO) throws IOException {
         List<Map<String, Object>> data = generateReport(reqDTO);
 
+        exportRows(response, reqDTO, data, reqDTO.getFields());
+    }
+
+    public void exportRows(HttpServletResponse response, CustomReportReqDTO reqDTO,
+                           List<Map<String, Object>> data, List<String> fields) throws IOException {
+
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         response.setCharacterEncoding("utf-8");
-        String fileName = URLEncoder.encode("自定义报表", StandardCharsets.UTF_8).replaceAll("\\+", "%20");
+        String requestedName = reqDTO.getTemplateName();
+        String safeName = requestedName == null || requestedName.isBlank() ? "自定义报表" : requestedName;
+        safeName = safeName.replaceAll("[\\r\\n/\\\\:*?\"<>|]", "_");
+        String fileName = URLEncoder.encode(safeName, StandardCharsets.UTF_8).replaceAll("\\+", "%20");
         response.setHeader("Content-disposition", "attachment;filename*=utf-8''" + fileName + ".xlsx");
 
-        // EasyExcel 写数据
+        List<List<String>> headers = fields.stream()
+                .map(field -> List.of(fieldWhiteList.getChineseHeader(field)))
+                .toList();
+        List<List<Object>> rows = fieldWhiteList.projectRows(data, fields).stream()
+                .map(row -> fields.stream().map(row::get).toList())
+                .toList();
+
         EasyExcel.write(response.getOutputStream())
+                .head(headers)
                 .sheet("报表数据")
-                .doWrite(data);
+                .doWrite(rows);
     }
 
 }

@@ -43,4 +43,10 @@ public interface DashboardMapper {
     List<Map<String, Object>> selectWsStudentByPovertyStats();
     List<Map<String, Object>> selectWsSalaryMonthlyStats();
     List<Map<String, Object>> selectWsSalaryTermStats();
+
+    Map<String, Object> selectWsCoreStats();
+    List<Map<String, Object>> selectWsPositionReport(@Param("batchId") Long batchId);
+    List<Map<String, Object>> selectWsStudentReport(@Param("collegeId") Long collegeId);
+    List<Map<String, Object>> selectWsSalaryReport(@Param("year") Integer year, @Param("month") Integer month);
+    List<Map<String, Object>> selectWsPositionDetail(@Param("status") Integer status);
 }
