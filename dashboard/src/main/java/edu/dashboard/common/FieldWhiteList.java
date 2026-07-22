@@ -58,34 +58,84 @@ public class FieldWhiteList {
         DEFAULT_REPORT_FIELDS.put("base_subsidy-list",
                 Arrays.asList("student_no", "name", "apply_amount", "approved_amount"));
         */
-        // -------------------- 勤工助学模块 (workstudy) --------------------
+// ==================== 勤工助学模块 (workstudy) ====================
+        // 只调用一次 registerModuleFields
         registerModuleFields("workstudy",
-                List.of("ws_department", "ws_position_name", "ws_student_name", "ws_college_name",
-                        "ws_poverty_level", "ws_work_hours", "ws_salary"),
+                // 1. 字段编码全集（包含明细字段和统计字段）
+                List.of(
+                        // 明细报表字段 (ws_ 前缀)
+                        "ws_department", "ws_position_name", "ws_student_name",
+                        "ws_college_name", "ws_poverty_level", "ws_work_hours", "ws_salary",
+                        // 统计报表字段 (无前缀，或业务名)
+                        "dept_name", "position_count", "plan_recruit_count", "apply_count",
+                        "hire_count", "on_job_count", "on_job_rate",
+                        "college_name", "poverty_level_text", "student_count",
+                        "salary_year", "salary_month", "paid_student_count", "total_salary_paid"
+                ),
+                // 2. 字段编码 -> 数据库列名/表达式 映射
                 Map.ofEntries(
+                        // 明细映射
                         Map.entry("ws_department", "p.department_name"),
                         Map.entry("ws_position_name", "p.position_name"),
                         Map.entry("ws_student_name", "s.name"),
                         Map.entry("ws_college_name", "c.college_name"),
                         Map.entry("ws_poverty_level", "s.poverty_level"),
                         Map.entry("ws_work_hours", "COALESCE(att.total_hours, 0)"),
-                        Map.entry("ws_salary", "COALESCE(sal.total_amount, 0)")
+                        Map.entry("ws_salary", "COALESCE(sal.total_amount, 0)"),
+
+                        // 岗位统计映射
+                        Map.entry("dept_name", "p.department_name"),
+                        Map.entry("position_count", "COUNT(DISTINCT p.id)"),
+                        Map.entry("plan_recruit_count", "SUM(p.recruit_count)"),
+                        Map.entry("apply_count", "COUNT(DISTINCT app.id)"),
+                        Map.entry("hire_count", "COUNT(DISTINCT h.id)"),
+                        Map.entry("on_job_count", "COUNT(DISTINCT CASE WHEN h.hire_status = 1 THEN h.id END)"),
+                        Map.entry("on_job_rate", "CASE WHEN SUM(p.recruit_count) > 0 THEN ROUND(COUNT(DISTINCT CASE WHEN h.hire_status = 1 THEN h.id END) * 100.0 / SUM(p.recruit_count), 2) ELSE 0 END"),
+
+                        // 学生统计映射
+                        Map.entry("college_name", "c.college_name"),
+                        Map.entry("poverty_level_text", "CASE s.poverty_level WHEN 1 THEN '特别困难' WHEN 2 THEN '困难' WHEN 3 THEN '一般困难' WHEN 4 THEN '不困难' ELSE '未知' END"),
+                        Map.entry("student_count", "COUNT(DISTINCT h.student_id)"),
+
+                        // 薪酬统计映射
+                        Map.entry("salary_year", "sal.salary_year"),
+                        Map.entry("salary_month", "sal.salary_month"),
+                        Map.entry("paid_student_count", "COUNT(DISTINCT sal.student_id)"),
+                        Map.entry("total_salary_paid", "SUM(sal.final_amount)")
                 ),
+                // 3. 字段编码 -> 中文名称 映射
                 Map.ofEntries(
-                        Map.entry("ws_department", "用工部门"),
-                        Map.entry("ws_position_name", "岗位名称"),
-                        Map.entry("ws_student_name", "学生姓名"),
-                        Map.entry("ws_college_name", "所属学院"),
-                        Map.entry("ws_poverty_level", "贫困等级"),
-                        Map.entry("ws_work_hours", "累计工时"),
-                        Map.entry("ws_salary", "实发薪酬")
+                        // 明细中文名
+                        Map.entry("ws_department", "用工部门"), Map.entry("ws_position_name", "岗位名称"),
+                        Map.entry("ws_student_name", "学生姓名"), Map.entry("ws_college_name", "所属学院"),
+                        Map.entry("ws_poverty_level", "贫困等级"), Map.entry("ws_work_hours", "工时"),
+                        Map.entry("ws_salary", "实发薪酬"),
+
+                        // 岗位统计中文名
+                        Map.entry("dept_name", "用工部门"), Map.entry("position_count", "岗位数"),
+                        Map.entry("plan_recruit_count", "计划招聘"), Map.entry("apply_count", "报名人数"),
+                        Map.entry("hire_count", "录用人数"), Map.entry("on_job_count", "在岗人数"),
+                        Map.entry("on_job_rate", "在岗率(%)"),
+
+                        // 学生统计中文名
+                        Map.entry("college_name", "所属学院"), Map.entry("poverty_level_text", "贫困等级"),
+                        Map.entry("student_count", "参与人数"),
+
+                        // 薪酬统计中文名
+                        Map.entry("salary_year", "年度"), Map.entry("salary_month", "月份"),
+                        Map.entry("paid_student_count", "发放人数"), Map.entry("total_salary_paid", "发放总额(元)")
                 )
         );
 
+        // 4. 默认报表字段配置
         DEFAULT_REPORT_FIELDS.put("workstudy_position-detail",
                 Arrays.asList("ws_department", "ws_position_name", "ws_student_name", "ws_salary"));
-        DEFAULT_REPORT_FIELDS.put("workstudy_salary-detail",
-                Arrays.asList("ws_student_name", "ws_college_name", "ws_work_hours", "ws_salary"));
+        DEFAULT_REPORT_FIELDS.put("workstudy_position-stat",
+                Arrays.asList("dept_name", "position_count", "plan_recruit_count", "apply_count", "hire_count", "on_job_count", "on_job_rate"));
+        DEFAULT_REPORT_FIELDS.put("workstudy_student-stat",
+                Arrays.asList("college_name", "poverty_level_text", "student_count"));
+        DEFAULT_REPORT_FIELDS.put("workstudy_salary-stat",
+                Arrays.asList("salary_year", "salary_month", "paid_student_count", "total_salary_paid"));
     }
 
     /**
