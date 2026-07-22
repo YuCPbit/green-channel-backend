@@ -63,13 +63,13 @@ public class FieldWhiteList {
                 List.of("ws_department", "ws_position_name", "ws_student_name", "ws_college_name",
                         "ws_poverty_level", "ws_work_hours", "ws_salary"),
                 Map.ofEntries(
-                        Map.entry("ws_department", "d.dept_name"),
+                        Map.entry("ws_department", "p.department_name"),
                         Map.entry("ws_position_name", "p.position_name"),
                         Map.entry("ws_student_name", "s.name"),
                         Map.entry("ws_college_name", "c.college_name"),
                         Map.entry("ws_poverty_level", "s.poverty_level"),
-                        Map.entry("ws_work_hours", "att.hours"),
-                        Map.entry("ws_salary", "sal.amount")
+                        Map.entry("ws_work_hours", "COALESCE(att.total_hours, 0)"),
+                        Map.entry("ws_salary", "COALESCE(sal.total_amount, 0)")
                 ),
                 Map.ofEntries(
                         Map.entry("ws_department", "用工部门"),
@@ -77,7 +77,7 @@ public class FieldWhiteList {
                         Map.entry("ws_student_name", "学生姓名"),
                         Map.entry("ws_college_name", "所属学院"),
                         Map.entry("ws_poverty_level", "贫困等级"),
-                        Map.entry("ws_work_hours", "工时"),
+                        Map.entry("ws_work_hours", "累计工时"),
                         Map.entry("ws_salary", "实发薪酬")
                 )
         );
@@ -118,9 +118,27 @@ public class FieldWhiteList {
         return fieldsToUse.stream().map(field -> {
             Assert.isTrue(allowedFields.contains(field), "非法字段: " + field);
             String column = FIELD_COLUMN_MAP.get(field);
+
+            // 正确处理表别名
+            String safeColumn;
+            if (column == null) {
+                throw new IllegalArgumentException("字段未配置映射: " + field);
+            }
+
+            // 处理聚合函数或表达式（如 COALESCE）
+            if (column.contains("(") || column.contains(" ") || column.contains("CASE")) {
+                safeColumn = column; // 表达式不加反引号
+            } else if (column.contains(".")) {
+                // 带表别名：p.department_name → `p`.`department_name`
+                String[] partsOfColumn = column.split("\\.");
+                safeColumn = "`" + partsOfColumn[0] + "`.`" + partsOfColumn[1] + "`";
+            } else {
+                // 不带表别名：`department_name`
+                safeColumn = "`" + column + "`";
+            }
+
             String chineseName = FIELD_CHINESE_NAME_MAP.get(field);
-            // 使用反引号包裹列名，防止关键字冲突，同时使用AS别名保持一致性
-            return "`" + column + "` AS `" + field + "`";
+            return safeColumn + " AS `" + field + "`";
         }).collect(Collectors.joining(", "));
     }
 

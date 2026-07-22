@@ -41,23 +41,45 @@ public class WorkStudyModuleDataService implements ModuleDataService {
     }
 
     @Override
-
     public List<Map<String, Object>> getReportData(String reportType, Map<String, Object> filters) {
+        String columns = fieldWhiteList.getSafeColumns("workstudy_" + reportType, null);
 
-// 1. 只查单表，确保肯定有数据且语法简单
+        String fromJoin = """
+        FROM gc_work_study_position p
+        LEFT JOIN gc_work_study_hire h ON p.id = h.position_id AND h.is_deleted = 0
+        LEFT JOIN gc_student s ON h.student_id = s.id AND s.is_deleted = 0
+        LEFT JOIN gc_college c ON s.college_id = c.id AND c.is_deleted = 0
+        LEFT JOIN (
+            SELECT hire_id, SUM(work_hours) AS total_hours
+            FROM gc_work_study_attendance
+            WHERE is_deleted = 0
+            GROUP BY hire_id
+        ) att ON h.id = att.hire_id
+        LEFT JOIN (
+            SELECT hire_id, SUM(final_amount) AS total_amount
+            FROM gc_work_study_salary
+            WHERE is_deleted = 0
+            GROUP BY hire_id
+        ) sal ON h.id = sal.hire_id
+        """;
 
-        String columns = "p.id, p.position_name, p.department_name";
+        StringBuilder where = new StringBuilder("WHERE p.is_deleted = 0");
 
-        String fromJoin = "FROM gc_work_study_position p";
+        if (filters != null && filters.containsKey("collegeId")) {
+            where.append(" AND c.id = ").append(filters.get("collegeId"));
+        }
+        if (filters != null && filters.containsKey("batchId")) {
+            where.append(" AND p.batch_id = ").append(filters.get("batchId"));
+        }
+        if (filters != null && filters.containsKey("status")) {
+            where.append(" AND p.status = ").append(filters.get("status"));
+        }
 
-        String where = "WHERE p.is_deleted = 0";
+        String orderBy = " ORDER BY p.id ASC, s.name ASC";
 
-        String finalSql = "SELECT " + columns + " " + fromJoin + " " + where;
+        String finalSql = "SELECT " + columns + " " + fromJoin + " " + where + orderBy;
 
-// 打印出来确认一下
-        System.out.println("【TEST SQL】" + finalSql);
-
+        System.out.println("【Final SQL】" + finalSql);
         return dynamicQueryMapper.execute(finalSql);
-
     }
 }
