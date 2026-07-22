@@ -1,3 +1,7 @@
+-- 状态：现行建库脚本
+-- 最后核验：2026-07-22（gift/subsidy/workstudy 业务实体所用表均已覆盖）
+-- 维护要求：任何表结构变更必须同步 docs/02-需求与设计/数据库设计说明.md
+
 -- 创建数据库
 CREATE DATABASE IF NOT EXISTS green_channel DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 USE green_channel;
