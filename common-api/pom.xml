@@ -12,4 +12,10 @@
     <artifactId>common-api</artifactId>
     <name>common-api</name>
     <description>跨服务复用的响应、异常、用户上下文和权限契约</description>
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+    </dependencies>
 </project>
