@@ -46,7 +46,7 @@ public class WorkStudyHireServiceImpl
         if (position == null || position.getDeleted() == 1) {
             throw new BusinessException(40000, "岗位不存在");
         }
-        
+
         boolean success = incrementHiredCount(position.getId());
         if (!success) {
             throw new BusinessException(40900, "岗位名额已满，无法继续录用");
