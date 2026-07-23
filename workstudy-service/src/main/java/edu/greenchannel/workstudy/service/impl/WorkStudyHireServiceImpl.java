@@ -4,9 +4,6 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import edu.greenchannel.common.BusinessException;
-import edu.greenchannel.message.MessageEvent;
-import edu.greenchannel.message.MessageEventType;
-import edu.greenchannel.message.MessagePublisher;
 import edu.greenchannel.workstudy.entity.WorkStudyApply;
 import edu.greenchannel.workstudy.entity.WorkStudyBatch;
 import edu.greenchannel.workstudy.entity.WorkStudyHire;
@@ -38,7 +35,6 @@ public class WorkStudyHireServiceImpl
     private final WorkStudyPositionMapper positionMapper;
     private final WorkStudyAgreementService agreementService;
     private final WorkStudyBatchMapper batchMapper;
-    private final MessagePublisher messagePublisher;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -128,15 +124,6 @@ public class WorkStudyHireServiceImpl
 
         agreementService.generateAgreement(hire);
 
-        messagePublisher.publish(new MessageEvent(
-                MessageEventType.WORK_STUDY_HIRED.name(),
-                hire.getStudentId(),
-                hire.getId().toString(),
-                Map.of(
-                        "positionName", position.getPositionName(),
-                        "hireDate", hire.getHireDate().toString()
-                )
-        ));
 
         log.info("录用成功: hireId={}, studentId={}, positionId={}",
                 hire.getId(), hire.getStudentId(), hire.getPositionId());
