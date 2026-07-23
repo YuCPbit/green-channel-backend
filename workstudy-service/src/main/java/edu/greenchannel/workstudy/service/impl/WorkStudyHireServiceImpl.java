@@ -1,12 +1,18 @@
 package edu.greenchannel.workstudy.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import edu.greenchannel.common.BusinessException;
+import edu.greenchannel.message.MessageEvent;
+import edu.greenchannel.message.MessageEventType;
+import edu.greenchannel.message.MessagePublisher;
 import edu.greenchannel.workstudy.entity.WorkStudyApply;
+import edu.greenchannel.workstudy.entity.WorkStudyBatch;
 import edu.greenchannel.workstudy.entity.WorkStudyHire;
 import edu.greenchannel.workstudy.entity.WorkStudyPosition;
 import edu.greenchannel.workstudy.enums.WorkStudyStatus;
+import edu.greenchannel.workstudy.mapper.WorkStudyBatchMapper;
 import edu.greenchannel.workstudy.mapper.WorkStudyHireMapper;
 import edu.greenchannel.workstudy.mapper.WorkStudyPositionMapper;
 import edu.greenchannel.workstudy.service.WorkStudyAgreementService;
@@ -19,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -30,6 +37,8 @@ public class WorkStudyHireServiceImpl
     private final WorkStudyApplyService applyService;
     private final WorkStudyPositionMapper positionMapper;
     private final WorkStudyAgreementService agreementService;
+    private final WorkStudyBatchMapper batchMapper;
+    private final MessagePublisher messagePublisher;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -49,6 +58,44 @@ public class WorkStudyHireServiceImpl
             throw new BusinessException(40000, "岗位不存在");
         }
 
+        // 1. 固定岗校验（必须放在 incrementHiredCount 之前）
+        if (position.getPositionType() != null && position.getPositionType() == 1) {
+            boolean hasFixedJob = lambdaQuery()
+                    .eq(WorkStudyHire::getStudentId, apply.getStudentId())
+                    .eq(WorkStudyHire::getHireStatus, 1) // 1-在岗
+                    .eq(WorkStudyHire::getDeleted, 0)
+                    .inSql(
+                            WorkStudyHire::getPositionId,
+                            "SELECT id FROM gc_work_study_position WHERE position_type = 1 AND is_deleted = 0"
+                    )
+                    .exists();
+
+            if (hasFixedJob) {
+                throw new BusinessException(40900, "该生当前已持有固定岗位，无法重复录用");
+            }
+        }
+
+        // 2. 全校岗位录用总数上限校验
+        WorkStudyBatch batch = batchMapper.selectById(position.getBatchId());
+        if (batch == null || batch.getDeleted() == 1) {
+            throw new BusinessException(40000, "所属批次不存在");
+        }
+
+        Integer totalHiredCount = Math.toIntExact(count(
+                new LambdaQueryWrapper<WorkStudyHire>()
+                        .inSql(
+                                WorkStudyHire::getPositionId,
+                                "SELECT id FROM gc_work_study_position WHERE batch_id = " + batch.getId() + " AND is_deleted = 0"
+                        )
+                        .eq(WorkStudyHire::getHireStatus, 1)
+                        .eq(WorkStudyHire::getDeleted, 0)
+        ));
+
+        if (totalHiredCount >= batch.getMaxPositions()) {
+            throw new BusinessException(40900, "全校岗位录用总数已达批次上限，无法继续录用");
+        }
+
+        // 3. 岗位名额校验
         boolean success = incrementHiredCount(position.getId());
         if (!success) {
             throw new BusinessException(40900, "岗位名额已满，无法继续录用");
@@ -80,6 +127,16 @@ public class WorkStudyHireServiceImpl
         applyService.updateById(apply);
 
         agreementService.generateAgreement(hire);
+
+        messagePublisher.publish(new MessageEvent(
+                MessageEventType.WORK_STUDY_HIRED.name(),
+                hire.getStudentId(),
+                hire.getId().toString(),
+                Map.of(
+                        "positionName", position.getPositionName(),
+                        "hireDate", hire.getHireDate().toString()
+                )
+        ));
 
         log.info("录用成功: hireId={}, studentId={}, positionId={}",
                 hire.getId(), hire.getStudentId(), hire.getPositionId());

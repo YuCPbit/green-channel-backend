@@ -5,7 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.mybatis.spring.annotation.MapperScan;
 
 @SpringBootApplication(scanBasePackages = "edu.greenchannel")
-@MapperScan("edu.greenchannel.workstudy.mapper")
+
 public class WorkstudyServiceApplication {
     public static void main(String[] args) {
         SpringApplication.run(WorkstudyServiceApplication.class, args);

@@ -3,6 +3,9 @@ package edu.greenchannel.workstudy.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import edu.greenchannel.common.BusinessException;
+import edu.greenchannel.message.MessageEvent;
+import edu.greenchannel.message.MessageEventType;
+import edu.greenchannel.message.MessagePublisher;
 import edu.greenchannel.workstudy.entity.WorkStudyAgreement;
 import edu.greenchannel.workstudy.entity.WorkStudyBatch;
 import edu.greenchannel.workstudy.entity.WorkStudyHire;
@@ -19,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Map;
 import java.util.UUID;
 
 @Slf4j
@@ -31,6 +35,7 @@ public class WorkStudyAgreementServiceImpl
     private final WorkStudyAgreementMapper agreementMapper;
     private final WorkStudyPositionMapper positionMapper;
     private final WorkStudyBatchMapper batchMapper;
+    private final MessagePublisher messagePublisher;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -78,6 +83,16 @@ public class WorkStudyAgreementServiceImpl
         agreement.setUpdateTime(LocalDateTime.now());
 
         agreementMapper.insert(agreement);
+
+        messagePublisher.publish(new MessageEvent(
+                MessageEventType.WORK_STUDY_AGREEMENT_PENDING.name(),
+                agreement.getStudentId(),
+                agreement.getId().toString(),
+                Map.of(
+                        "agreementNo", agreement.getAgreementNo(),
+                        "positionName", position.getPositionName()
+                )
+        ));
         log.info("协议生成成功：agreementNo={}, hireId={}", agreementNo, hire.getId());
     }
 

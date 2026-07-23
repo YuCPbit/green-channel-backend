@@ -112,25 +112,6 @@ public class WorkStudyBatchServiceImpl
             case INTERVIEW_COMPLETED -> false;
             case INTERVIEW_PASSED -> false;
             case INTERVIEW_FAILED -> false;
-            case HIRE_ON_JOB -> false;
-            case HIRE_TRANSFERRED -> false;
-            case HIRE_RESIGNED -> false;
-            case HIRE_DISMISSED -> false;
-            case ATTENDANCE_NORMAL -> false;
-            case ATTENDANCE_LATE -> false;
-            case ATTENDANCE_EARLY_LEAVE -> false;
-            case ATTENDANCE_LEAVE -> false;
-            case ATTENDANCE_ABSENT -> false;
-            case ATTENDANCE_RETRY_PENDING -> false;
-            case ATTENDANCE_RETRY_APPROVED -> false;
-            case SALARY_DEPT_PENDING -> false;
-            case SALARY_SCHOOL_PENDING -> false;
-            case SALARY_APPROVED -> false;
-            case SALARY_PAID -> false;
-            case AGREEMENT_PENDING -> false;
-            case AGREEMENT_SIGNED -> false;
-            case AGREEMENT_EXPIRED -> false;
-            case AGREEMENT_RENEWED -> false;
         };
 
         if (!allowed) {

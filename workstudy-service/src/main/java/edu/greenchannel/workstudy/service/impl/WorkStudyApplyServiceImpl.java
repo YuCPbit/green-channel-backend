@@ -5,10 +5,12 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import edu.greenchannel.common.BusinessException;
 import edu.greenchannel.workstudy.entity.WorkStudyApply;
 import edu.greenchannel.workstudy.entity.WorkStudyBatch;
+import edu.greenchannel.workstudy.entity.WorkStudyHire;
 import edu.greenchannel.workstudy.entity.WorkStudyPosition;
 import edu.greenchannel.workstudy.enums.WorkStudyStatus;
 import edu.greenchannel.workstudy.mapper.WorkStudyApplyMapper;
 import edu.greenchannel.workstudy.mapper.WorkStudyBatchMapper;
+import edu.greenchannel.workstudy.mapper.WorkStudyHireMapper;
 import edu.greenchannel.workstudy.mapper.WorkStudyPositionMapper;
 import edu.greenchannel.workstudy.service.WorkStudyApplyService;
 import org.springframework.stereotype.Service;
@@ -16,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -25,12 +28,16 @@ public class WorkStudyApplyServiceImpl
 
     private final WorkStudyPositionMapper positionMapper;
     private final WorkStudyBatchMapper batchMapper;
+    private final WorkStudyHireMapper hireMapper;
 
     public WorkStudyApplyServiceImpl(WorkStudyPositionMapper positionMapper,
-                                     WorkStudyBatchMapper batchMapper) {
+                                     WorkStudyBatchMapper batchMapper,
+                                     WorkStudyHireMapper hireMapper) {
         this.positionMapper = positionMapper;
         this.batchMapper = batchMapper;
+        this.hireMapper = hireMapper;
     }
+
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -58,6 +65,21 @@ public class WorkStudyApplyServiceImpl
             throw new BusinessException(40000, "不在报名时间内");
         }
 
+        boolean isBlacklisted = hireMapper.exists(
+                new LambdaQueryWrapper<WorkStudyHire>()
+                        .inSql(
+                                WorkStudyHire::getPositionId,
+                                "SELECT id FROM gc_work_study_position WHERE batch_id = " + position.getBatchId() + " AND is_deleted = 0"
+                        )
+                        .eq(WorkStudyHire::getStudentId, studentId)
+                        .eq(WorkStudyHire::getHireStatus, 4)
+                        .eq(WorkStudyHire::getDeleted, 0)
+        );
+
+        if (isBlacklisted) {
+            throw new BusinessException(40300, "您因违规被解聘，本学期内无法申请新岗位");
+        }
+        
         // 5. 校验是否已报名（唯一索引 uk_position_student）
         long count = count(new LambdaQueryWrapper<WorkStudyApply>()
                 .eq(WorkStudyApply::getPositionId, positionId)
@@ -89,6 +111,7 @@ public class WorkStudyApplyServiceImpl
         applyInfo.setUpdateTime(now);
 
         save(applyInfo);
+
         return applyInfo.getId();
     }
 
@@ -194,4 +217,5 @@ public class WorkStudyApplyServiceImpl
         String randomStr = UUID.randomUUID().toString().substring(0, 6).toUpperCase();
         return "WS" + dateStr + "-" + randomStr;
     }
+
 }
