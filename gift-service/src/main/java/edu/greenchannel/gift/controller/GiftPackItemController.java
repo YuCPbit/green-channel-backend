@@ -7,6 +7,8 @@ import edu.greenchannel.gift.entity.GiftPackItem;
 import edu.greenchannel.gift.service.GiftPackItemService;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/gift/item")
 public class GiftPackItemController {
@@ -31,7 +33,7 @@ public class GiftPackItemController {
         return ApiResponse.success(item);
     }
 
-    // 分页列表查询
+    // 分页列表查询（保留，以后用）
     @GetMapping("/page")
     public ApiResponse<IPage<GiftPackItem>> page(
             @RequestParam Integer pageNum,
@@ -40,6 +42,13 @@ public class GiftPackItemController {
         Page<GiftPackItem> page = new Page<>(pageNum, pageSize);
         IPage<GiftPackItem> pageData = itemService.page(page);
         return ApiResponse.success(pageData);
+    }
+
+    // ✅ 新增：不分页，返回全部（给前端演示用）
+    @GetMapping("/list")
+    public ApiResponse<List<GiftPackItem>> list() {
+        List<GiftPackItem> list = itemService.list();
+        return ApiResponse.success(list);
     }
 
     // 修改礼品

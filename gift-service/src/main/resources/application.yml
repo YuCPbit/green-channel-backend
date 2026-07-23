@@ -1,18 +1,42 @@
 spring:
   application:
-    name: gift-service
+    name: green-channel-backend
   datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3306/green_channel?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
+    url: ${DB_URL:jdbc:mysql://localhost:3306/green_channel?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false}
     username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:}
+    password: ${DB_PASSWORD:654321}
     driver-class-name: com.mysql.cj.jdbc.Driver
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+
 server:
-  port: ${SERVER_PORT:8082}
+  port: ${SERVER_PORT:8080}
+
+logging:
+  level:
+    root: INFO
+    edu.greenchannel: DEBUG
+
+app:
+  attachment:
+    storage-path: ${ATTACHMENT_STORAGE_PATH:./data/attachments}
+  integration:
+    api-key: ${INTEGRATION_API_KEY:}
+
+#JWT 配置
+jwt:
+  secret: green-channel-secret-key-2026-for-jwt-signing
+  expiration: 28800
+
 mybatis-plus:
+  mapper-locations: classpath:mapper/**/*.xml
   configuration:
     map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
   global-config:
     db-config:
+      id-type: auto
       logic-delete-field: isDeleted
       logic-delete-value: 1
       logic-not-delete-value: 0
