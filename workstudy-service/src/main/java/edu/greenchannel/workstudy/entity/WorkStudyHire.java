@@ -16,24 +16,33 @@ public class WorkStudyHire {
 
     /** 报名申请ID */
     private Long applyId;
+
     /** 岗位ID */
     private Long positionId;
+
     /** 学生ID */
     private Long studentId;
+
     /** 录用状态: 1-在岗 2-已调岗 3-主动离岗 4-违规解聘 */
     private Integer hireStatus;
+
     /** 录用日期 */
     private LocalDate hireDate;
+
     /** 离岗日期 */
     private LocalDate leaveDate;
-    /** 录用时的薪酬标准（快照，防止岗位调整后历史薪酬变化） */
-    private BigDecimal salaryRate;
+
     /** 离岗原因 */
     private String leaveReason;
-    /** 录用审批人ID */
+
+    /** 录用审批人ID(资助中心) */
     private Long approvedBy;
+
     /** 审批时间 */
     private LocalDateTime approveTime;
+
+    /** 录用时的薪酬标准快照 */
+    private BigDecimal salaryRate;
 
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
@@ -42,5 +51,6 @@ public class WorkStudyHire {
     private LocalDateTime updateTime;
 
     @TableLogic
-    private Integer isDeleted;
+    @TableField("is_deleted")
+    private Integer deleted;
 }
