@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/subsidy/batches")
-@RequirePermission("school:batch:view")
 public class SubsidyBatchController {
 
     @Autowired
@@ -19,6 +18,7 @@ public class SubsidyBatchController {
 
     // 1. POST /api/subsidy/batches：创建补助批次
     @PostMapping
+    @RequirePermission("school:batch:view")
     public ApiResponse<BatchResponse> createBatch(@RequestBody BatchCreateRequest request) {
         BatchResponse response = batchService.createBatch(request);
         return ApiResponse.success(response);
@@ -26,6 +26,7 @@ public class SubsidyBatchController {
 
     // 2. GET /api/subsidy/batches：分页查询批次列表
     @GetMapping
+    @RequirePermission({"school:batch:view", "college:quota:view"})
     public ApiResponse<Page<BatchResponse>> queryBatches(
             @RequestParam(required = false) String batchName,
             @RequestParam(required = false) Integer status,
@@ -38,6 +39,7 @@ public class SubsidyBatchController {
 
     // 3. PUT /api/subsidy/batches/{id}：修改批次
     @PutMapping("/{id}")
+    @RequirePermission("school:batch:view")
     public ApiResponse<BatchResponse> updateBatch(
             @PathVariable Long id,
             @RequestBody BatchUpdateRequest request) {
@@ -47,6 +49,7 @@ public class SubsidyBatchController {
 
     // 4. POST /api/subsidy/batches/{id}/start：开始批次（DRAFT → ACTIVE）
     @PostMapping("/{id}/start")
+    @RequirePermission("school:batch:view")
     public ApiResponse<BatchResponse> startBatch(@PathVariable Long id) {
         BatchResponse response = batchService.startBatch(id);
         return ApiResponse.success(response);
@@ -54,6 +57,7 @@ public class SubsidyBatchController {
 
     // 5. POST /api/subsidy/batches/{id}/end：提前结束批次（ACTIVE → ENDED）
     @PostMapping("/{id}/end")
+    @RequirePermission("school:batch:view")
     public ApiResponse<BatchResponse> endBatch(@PathVariable Long id) {
         BatchResponse response = batchService.endBatch(id);
         return ApiResponse.success(response);
