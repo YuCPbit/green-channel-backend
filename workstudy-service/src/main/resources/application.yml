@@ -6,6 +6,7 @@ spring:
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
+
 server:
   port: ${SERVER_PORT:8084}
   servlet:
@@ -16,7 +17,8 @@ mybatis-plus:
     map-underscore-to-camel-case: true
   global-config:
     db-config:
-      logic-delete-field: isDeleted
-      logic-delete-value: 1
-      logic-not-delete-value: 0
+      table-prefix: gc_
+      logic-delete-field: is_deleted
+      logic-delete-value: "1"
+      logic-not-delete-value: "0"
       id-type: auto
