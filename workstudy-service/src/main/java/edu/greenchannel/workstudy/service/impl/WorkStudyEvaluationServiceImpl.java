@@ -1,6 +1,8 @@
 package edu.greenchannel.workstudy.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import edu.greenchannel.common.BusinessException;
 import edu.greenchannel.workstudy.entity.WorkStudyEvaluation;
 import edu.greenchannel.workstudy.mapper.WorkStudyEvaluationMapper;
 import edu.greenchannel.workstudy.service.NotificationService;
@@ -8,6 +10,7 @@ import edu.greenchannel.workstudy.service.WorkStudyEvaluationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -19,19 +22,35 @@ public class WorkStudyEvaluationServiceImpl
         extends ServiceImpl<WorkStudyEvaluationMapper, WorkStudyEvaluation>
         implements WorkStudyEvaluationService {
 
-    private final WorkStudyEvaluationMapper evaluationMapper; // 如果需要直接使用Mapper，可以保留
     private final NotificationService notificationService;
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void submitEvaluation(WorkStudyEvaluation evaluation) {
-        log.info("提交月度评价：学生ID={}, 年份={}, 月份={}, 评分={}",
-                evaluation.getStudentId(), evaluation.getEvalYear(),
-                evaluation.getEvalMonth(), evaluation.getScore());
+        // 1. 校验：一个录用记录一个月只能评价一次
+        long count = count(new LambdaQueryWrapper<WorkStudyEvaluation>()
+                .eq(WorkStudyEvaluation::getHireId, evaluation.getHireId())
+                .eq(WorkStudyEvaluation::getEvalYear, evaluation.getEvalYear())
+                .eq(WorkStudyEvaluation::getEvalMonth, evaluation.getEvalMonth())
+                .eq(WorkStudyEvaluation::getDeleted, 0));
+
+        if (count > 0) {
+            throw new BusinessException(40900, "该录用记录本月已评价，请勿重复提交");
+        }
+
+        // 2. 校验评分范围
+        if (evaluation.getScore() == null || evaluation.getScore() < 1 || evaluation.getScore() > 5) {
+            throw new BusinessException(40000, "评分必须在1-5分之间");
+        }
+
+        log.info("提交月度评价：hireId={}, studentId={}, 评分={}",
+                evaluation.getHireId(), evaluation.getStudentId(), evaluation.getScore());
 
         evaluation.setEvalTime(LocalDateTime.now());
+        evaluation.setDeleted(0);
         save(evaluation);
 
-        // 检查是否需要预警
+        // 3. 预警检查
         checkWarning(evaluation.getStudentId(), evaluation.getEvalYear(), evaluation.getEvalMonth());
     }
 
@@ -39,8 +58,6 @@ public class WorkStudyEvaluationServiceImpl
      * 预警逻辑：检查最近两个月是否都低于2分
      */
     private void checkWarning(Long studentId, int year, int month) {
-        log.debug("开始检查学生ID={} 的评价预警，年份={}，月份={}", studentId, year, month);
-
         // 计算上个月
         int prevMonth = month - 1;
         int prevYear = year;
@@ -49,42 +66,44 @@ public class WorkStudyEvaluationServiceImpl
             prevYear--;
         }
 
-        // 查本月评分
-        Integer currentScore = Optional.ofNullable(lambdaQuery()
-                        .eq(WorkStudyEvaluation::getStudentId, studentId)
-                        .eq(WorkStudyEvaluation::getEvalYear, year)
-                        .eq(WorkStudyEvaluation::getEvalMonth, month)
-                        .one())
-                .map(WorkStudyEvaluation::getScore)
-                .orElse(0);
+        // 本月评分
+        Integer currentScore = getScore(studentId, year, month);
+        // 上月评分
+        Integer lastScore = getScore(studentId, prevYear, prevMonth);
 
-        // 查上月评分
-        Integer lastScore = Optional.ofNullable(lambdaQuery()
-                        .eq(WorkStudyEvaluation::getStudentId, studentId)
-                        .eq(WorkStudyEvaluation::getEvalYear, prevYear)
-                        .eq(WorkStudyEvaluation::getEvalMonth, prevMonth)
-                        .one())
-                .map(WorkStudyEvaluation::getScore)
-                .orElse(0);
+        log.debug("预警检查：studentId={}, 本月{}-{}:{}, 上月{}-{}:{}",
+                studentId, year, month, currentScore, prevYear, prevMonth, lastScore);
 
-        log.debug("学生ID={} 本月评分={}，上月评分={}", studentId, currentScore, lastScore);
+        // 连续两个月低于2分
+        if (currentScore != null && currentScore < 2 &&
+                lastScore != null && lastScore < 2) {
 
-        // 如果连续两个月低于2分，发预警
-        if (currentScore < 2 && lastScore < 2) {
-            String warningContent = String.format("学生ID:%d 连续两月评价过低（%d年%d月:%d分，%d年%d月:%d分），请关注！",
+            String warningContent = String.format(
+                    "学生ID:%d 连续两月评价过低（%d年%d月:%d分，%d年%d月:%d分），请关注！",
                     studentId, year, month, currentScore, prevYear, prevMonth, lastScore);
 
             log.warn("触发评价预警：{}", warningContent);
 
-            // 调用消息服务发送预警（实际调用的是LocalMockNotificationServiceImpl）
             notificationService.sendWarning(
                     5001L, // 资助中心管理员ID
                     "勤工助学评价预警",
                     warningContent,
                     studentId.toString()
             );
-        } else {
-            log.debug("学生ID={} 评价正常，无需预警", studentId);
         }
+    }
+
+    /**
+     * 查询某学生某月评分
+     */
+    private Integer getScore(Long studentId, int year, int month) {
+        return Optional.ofNullable(getOne(
+                new LambdaQueryWrapper<WorkStudyEvaluation>()
+                        .eq(WorkStudyEvaluation::getStudentId, studentId)
+                        .eq(WorkStudyEvaluation::getEvalYear, year)
+                        .eq(WorkStudyEvaluation::getEvalMonth, month)
+                        .eq(WorkStudyEvaluation::getDeleted, 0)
+                        .select(WorkStudyEvaluation::getScore)
+        )).map(WorkStudyEvaluation::getScore).orElse(null);
     }
 }
