@@ -9,6 +9,7 @@ import edu.greenchannel.workstudy.entity.WorkStudyPosition;
 import edu.greenchannel.workstudy.enums.WorkStudyStatus;
 import edu.greenchannel.workstudy.mapper.WorkStudyHireMapper;
 import edu.greenchannel.workstudy.mapper.WorkStudyPositionMapper;
+import edu.greenchannel.workstudy.service.WorkStudyAgreementService;
 import edu.greenchannel.workstudy.service.WorkStudyApplyService;
 import edu.greenchannel.workstudy.service.WorkStudyHireService;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,7 @@ public class WorkStudyHireServiceImpl
 
     private final WorkStudyApplyService applyService;
     private final WorkStudyPositionMapper positionMapper;
+    private final WorkStudyAgreementService agreementService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -76,6 +78,8 @@ public class WorkStudyHireServiceImpl
         apply.setStatus(WorkStudyStatus.APPLY_HIRED.getCode());
         apply.setUpdateTime(LocalDateTime.now());
         applyService.updateById(apply);
+
+        agreementService.generateAgreement(hire);
 
         log.info("录用成功: hireId={}, studentId={}, positionId={}",
                 hire.getId(), hire.getStudentId(), hire.getPositionId());
