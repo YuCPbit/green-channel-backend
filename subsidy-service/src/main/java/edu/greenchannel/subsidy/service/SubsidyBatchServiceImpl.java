@@ -22,11 +22,11 @@ public class SubsidyBatchServiceImpl implements SubsidyBatchService {
     @Transactional
     public BatchResponse createBatch(BatchCreateRequest request) {
         validateBatchTimes(request.applyStartTime(), request.applyEndTime(), request.collegeSubmitEndTime());
-        // 集中批次(subsidyType=1)每学年仅允许一个
+        // 生活补助(subsidyType=1)每学年仅允许一个
         if (request.subsidyType() != null && request.subsidyType() == 1) {
             long existingCount = batchRepository.countByAcademicYearAndSubsidyType(request.academicYear(), 1, null);
             if (existingCount > 0) {
-                throw new IllegalArgumentException("该学年已存在集中批次，每学年仅允许创建一个集中批次。");
+                throw new IllegalArgumentException("该学年已存在生活补助批次，每学年仅允许创建一个。");
             }
         }
 
@@ -59,11 +59,11 @@ public class SubsidyBatchServiceImpl implements SubsidyBatchService {
                 .orElseThrow(() -> new IllegalArgumentException("该批次不存在！"));
 
         validateBatchTimes(request.applyStartTime(), request.applyEndTime(), request.collegeSubmitEndTime());
-        // 集中批次(subsidyType=1)每学年仅允许一个（排除自身）
+        // 生活补助(subsidyType=1)每学年仅允许一个（排除自身）
         if (request.subsidyType() != null && request.subsidyType() == 1 && request.academicYear() != null) {
             long existingCount = batchRepository.countByAcademicYearAndSubsidyType(request.academicYear(), 1, id);
             if (existingCount > 0) {
-                throw new IllegalArgumentException("该学年已存在集中批次，每学年仅允许创建一个集中批次。");
+                throw new IllegalArgumentException("该学年已存在生活补助批次，每学年仅允许创建一个。");
             }
         }
 

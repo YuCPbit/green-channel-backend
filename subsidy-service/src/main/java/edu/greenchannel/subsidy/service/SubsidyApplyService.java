@@ -22,9 +22,11 @@ import java.util.List;
 public class SubsidyApplyService {
 
     private final SubsidyApplyRepository repository;
+    private final SubsidyLedgerService ledgerService;
 
-    public SubsidyApplyService(SubsidyApplyRepository repository) {
+    public SubsidyApplyService(SubsidyApplyRepository repository, SubsidyLedgerService ledgerService) {
         this.repository = repository;
+        this.ledgerService = ledgerService;
     }
 
     // ---------------------------------------------------------------
@@ -227,6 +229,13 @@ public class SubsidyApplyService {
                 deductGradeQuota(apply, finalAmount);
                 deductCollegeQuota(apply, finalAmount);
                 repository.updateApplyStatus(apply.id(), SubsidyApplyRecord.STATUS_APPROVED, finalAmount);
+                // 终审通过后自动生成发放台账
+                SubsidyApplyRecord approvedApply = new SubsidyApplyRecord(
+                        apply.id(), apply.batchId(), apply.studentId(), apply.applicantType(),
+                        apply.applicantUserId(), apply.applyNo(), apply.subsidyType(),
+                        apply.applyAmount(), finalAmount, apply.applyReason(),
+                        SubsidyApplyRecord.STATUS_APPROVED, apply.applyTime());
+                ledgerService.generateLedger(approvedApply);
             }
             default -> throw new BusinessException(40001, "无效的审核角色");
         }

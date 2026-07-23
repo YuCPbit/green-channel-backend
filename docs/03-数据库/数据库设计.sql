@@ -19,6 +19,7 @@ CREATE TABLE `gc_user` (
   `phone` VARCHAR(20) DEFAULT NULL COMMENT '手机号',
   `email` VARCHAR(100) DEFAULT NULL COMMENT '邮箱',
   `user_type` TINYINT NOT NULL COMMENT '用户类型: 1-学生 2-辅导员 3-学院管理员 4-学校管理员 5-系统管理员',
+  `college_id` BIGINT DEFAULT NULL COMMENT '归属学院ID(辅导员、学院管理员必填)',
   `status` TINYINT DEFAULT 1 COMMENT '状态: 1-正常 0-禁用',
   `last_login_time` DATETIME DEFAULT NULL COMMENT '最后登录时间',
   `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -535,6 +536,7 @@ CREATE TABLE `gc_subsidy_batch` (
   `total_amount` DECIMAL(12,2) NOT NULL DEFAULT 0.00 COMMENT '学校总金额盘',
   `apply_start_time` DATETIME NOT NULL COMMENT '申请开始时间',
   `apply_end_time` DATETIME NOT NULL COMMENT '申请结束时间',
+  `college_submit_end_time` DATETIME NOT NULL COMMENT '学院提交截止时间',
   `status` TINYINT DEFAULT 1 COMMENT '状态: 0-未开始 1-进行中 2-已结束',
   `creator_id` BIGINT DEFAULT NULL COMMENT '创建人ID',
   `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -547,6 +549,10 @@ CREATE TABLE `gc_subsidy_batch` (
 CREATE TABLE `gc_subsidy_allocation` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   `batch_id` BIGINT NOT NULL COMMENT '补助批次ID',
+  `allocator_role` TINYINT NOT NULL COMMENT '分配发起方角色: 1-学校 2-学院',
+  `target_type` TINYINT NOT NULL COMMENT '目标类型: 1-学院 2-年级',
+  `source_id` BIGINT NOT NULL DEFAULT 0 COMMENT '分配来源ID(学校填0，学院填学院ID)',
+  `target_id` BIGINT NOT NULL COMMENT '目标ID(学院ID或年级值)',
   `college_id` BIGINT NOT NULL COMMENT '学院ID',
   `grade` INT DEFAULT NULL COMMENT '年级(为空则为学院总额)',
   `allocated_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00 COMMENT '分配金额',
@@ -955,3 +961,27 @@ INSERT INTO `gc_system_config` (`config_name`, `config_key`, `config_value`, `co
 ('勤工助学每批次最多报名岗位数', 'WS_MAX_APPLY_COUNT', '3', 'NUMBER', '学生每批次最多可报名的岗位数量'),
 ('勤工助学最低时薪标准', 'WS_MIN_HOURLY_RATE', '12', 'NUMBER', '薪酬标准不得低于此值(元/小时)'),
 ('辅导员申请单笔金额上限', 'TUTOR_APP_MAX_AMOUNT', '50000', 'NUMBER', '辅导员事务申请单笔金额上限(元)');
+
+-- 补助发放台账表（2026-07-22 新增）
+
+CREATE TABLE `gc_subsidy_ledger` (
+  `id`                  BIGINT          NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `batch_id`            BIGINT          NOT NULL COMMENT '补助批次ID',
+  `apply_id`            BIGINT          NOT NULL COMMENT '补助申请ID',
+  `student_id`          BIGINT          NOT NULL COMMENT '学生ID',
+  `apply_no`            VARCHAR(50)     NOT NULL COMMENT '申请编号',
+  `subsidy_type`        TINYINT         NOT NULL COMMENT '补助类型: 1-生活补助 2-路费补助 3-临时困难补助',
+  `approved_amount`     DECIMAL(10,2)   NOT NULL COMMENT '审批金额',
+  `disburse_status`     TINYINT         NOT NULL DEFAULT 0 COMMENT '发放状态: 0-待发放 1-已发放 2-发放失败',
+  `disburse_time`       DATETIME        DEFAULT NULL COMMENT '发放时间',
+  `disburse_operator_id` BIGINT         DEFAULT NULL COMMENT '发放操作人ID',
+  `bank_card_no`        VARCHAR(50)     DEFAULT NULL COMMENT '银行卡号',
+  `remark`              VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+  `create_time`         DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time`         DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `is_deleted`          TINYINT(1)      DEFAULT 0 COMMENT '是否逻辑删除',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_apply_id` (`apply_id`),
+  KEY `idx_batch_id` (`batch_id`),
+  KEY `idx_disburse_status` (`disburse_status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='补助发放台账表';
