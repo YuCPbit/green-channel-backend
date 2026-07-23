@@ -6,6 +6,8 @@ import edu.greenchannel.common.PageResult;
 import edu.greenchannel.tutor.dto.request.TutorApplyRequest;
 import edu.greenchannel.tutor.dto.request.TutorReviewRequest;
 import edu.greenchannel.tutor.dto.response.ApplyTypeResponse;
+import edu.greenchannel.tutor.dto.response.LedgerDetailRow;
+import edu.greenchannel.tutor.dto.response.LedgerSummaryRow;
 import edu.greenchannel.tutor.dto.response.StudentBrief;
 import edu.greenchannel.tutor.dto.response.TutorApplyView;
 import edu.greenchannel.tutor.dto.response.TutorReviewView;
@@ -21,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -343,6 +346,260 @@ public class TutorApplicationServiceImpl implements TutorApplicationService {
             summary.put("pendingAmount", BigDecimal.ZERO); summary.put("disbursedAmount", BigDecimal.ZERO);
         }
         return summary;
+    }
+
+    // ==================== 台账 ====================
+
+    // 辅导员 → 学院的映射（去重：一个辅导员只归入一个学院）
+    private static final String TUTOR_COLLEGE_JOIN = """
+            LEFT JOIN (SELECT c.tutor_id, MIN(m.college_id) AS college_id
+                       FROM gc_class c JOIN gc_major m ON c.major_id = m.id
+                       WHERE c.is_deleted = 0 GROUP BY c.tutor_id) tc ON tc.tutor_id = a.tutor_id
+            LEFT JOIN gc_college col ON col.id = tc.college_id
+            """;
+
+    @Override
+    public List<LedgerSummaryRow> getLedgerSummary(CurrentUser user, LocalDate startDate, LocalDate endDate) {
+        StringBuilder sql = new StringBuilder("""
+                SELECT col.id AS collegeId, col.college_name AS collegeName,
+                       a.type_id AS typeId, t.type_name AS typeName,
+                       COUNT(*) AS totalCount,
+                       COALESCE(SUM(a.amount), 0) AS totalAmount,
+                       COALESCE(SUM(CASE WHEN a.disburse_status = 2 THEN 1 ELSE 0 END), 0) AS disbursedCount,
+                       COALESCE(SUM(CASE WHEN a.disburse_status = 2 THEN a.amount ELSE 0 END), 0) AS disbursedAmount,
+                       COALESCE(SUM(CASE WHEN a.disburse_status = 1 THEN 1 ELSE 0 END), 0) AS pendingCount,
+                       COALESCE(SUM(CASE WHEN a.disburse_status = 1 THEN a.amount ELSE 0 END), 0) AS pendingAmount
+                FROM gc_tutor_application a
+                JOIN gc_tutor_apply_type t ON a.type_id = t.id
+                """);
+        sql.append(TUTOR_COLLEGE_JOIN);
+        sql.append(" WHERE a.status = ? AND a.amount > 0 AND a.is_deleted = 0");
+
+        List<Object> params = new ArrayList<>();
+        params.add(TutorAppStatus.APPROVED.getCode());
+
+        if (startDate != null) {
+            sql.append(" AND a.submit_time >= ?");
+            params.add(startDate.atStartOfDay());
+        }
+        if (endDate != null) {
+            sql.append(" AND a.submit_time < ?");
+            params.add(endDate.plusDays(1).atStartOfDay());
+        }
+
+        sql.append(" GROUP BY col.id, col.college_name, a.type_id, t.type_name ORDER BY col.id, t.sort");
+
+        return jdbcTemplate.query(sql.toString(), (rs, rowNum) -> new LedgerSummaryRow(
+                rs.getObject("collegeId") != null ? rs.getLong("collegeId") : 0L,
+                rs.getString("collegeName") != null ? rs.getString("collegeName") : "未知学院",
+                rs.getLong("typeId"),
+                rs.getString("typeName"),
+                rs.getLong("totalCount"),
+                rs.getBigDecimal("totalAmount"),
+                rs.getLong("disbursedCount"),
+                rs.getBigDecimal("disbursedAmount"),
+                rs.getLong("pendingCount"),
+                rs.getBigDecimal("pendingAmount")
+        ), params.toArray());
+    }
+
+    @Override
+    public PageResult<LedgerDetailRow> getLedgerDetail(CurrentUser user, Long collegeId, Long typeId,
+                                                        LocalDate startDate, LocalDate endDate, int page, int size) {
+        String baseFrom = """
+                FROM gc_tutor_application a
+                JOIN gc_tutor_apply_type t ON a.type_id = t.id
+                JOIN gc_user u ON a.tutor_id = u.id
+                """ + TUTOR_COLLEGE_JOIN +
+                " WHERE a.status = ? AND a.amount > 0 AND a.is_deleted = 0";
+
+        StringBuilder countSql = new StringBuilder("SELECT COUNT(*) ").append(baseFrom);
+        StringBuilder dataSql = new StringBuilder("""
+                SELECT a.id, a.apply_no, a.title, t.type_name, u.real_name AS tutorName,
+                       col.college_name, a.amount, a.disburse_status, a.disburse_time,
+                       a.submit_time, a.urgency
+                """).append(baseFrom);
+
+        List<Object> params = new ArrayList<>();
+        params.add(TutorAppStatus.APPROVED.getCode());
+
+        appendLedgerFilters(countSql, dataSql, params, collegeId, typeId, startDate, endDate);
+
+        dataSql.append(" ORDER BY a.submit_time DESC LIMIT ? OFFSET ?");
+
+        long total = jdbcTemplate.queryForObject(countSql.toString(), Long.class, params.toArray());
+
+        List<Object> dataParams = new ArrayList<>(params);
+        dataParams.add(size);
+        dataParams.add((long) (page - 1) * size);
+
+        List<LedgerDetailRow> rows = jdbcTemplate.query(dataSql.toString(), (rs, rowNum) -> new LedgerDetailRow(
+                rs.getLong("id"),
+                rs.getString("apply_no"),
+                rs.getString("title"),
+                rs.getString("type_name"),
+                rs.getString("tutorName"),
+                rs.getString("college_name") != null ? rs.getString("college_name") : "未知学院",
+                rs.getBigDecimal("amount"),
+                rs.getInt("disburse_status"),
+                rs.getTimestamp("disburse_time") != null ? rs.getTimestamp("disburse_time").toLocalDateTime() : null,
+                rs.getTimestamp("submit_time") != null ? rs.getTimestamp("submit_time").toLocalDateTime() : null,
+                rs.getInt("urgency")
+        ), dataParams.toArray());
+
+        return new PageResult<>(rows, total, page, size);
+    }
+
+    @Override
+    public byte[] exportLedgerExcel(CurrentUser user, Long collegeId, Long typeId,
+                                     List<Long> collegeIds, List<Long> typeIds,
+                                     LocalDate startDate, LocalDate endDate) {
+        // 查询完整明细（不分页），支持多选 collegeId/typeId 筛选
+        List<LedgerDetailRow> allRows = getAllLedgerDetail(collegeId, typeId, collegeIds, typeIds, startDate, endDate);
+
+        try (var workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook()) {
+            var sheet = workbook.createSheet("辅导员事务台账");
+
+            // 表头样式
+            var headerStyle = workbook.createCellStyle();
+            var headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            headerStyle.setFont(headerFont);
+            headerStyle.setFillForegroundColor(org.apache.poi.hssf.util.HSSFColor.HSSFColorPredefined.LIGHT_GREEN.getIndex());
+            headerStyle.setFillPattern(org.apache.poi.ss.usermodel.FillPatternType.SOLID_FOREGROUND);
+            headerStyle.setBorderBottom(org.apache.poi.ss.usermodel.BorderStyle.THIN);
+
+            // 表头
+            String[] headers = {"申请编号", "标题", "类型", "辅导员", "学院", "金额", "下发状态", "下发时间", "提交时间", "紧急程度"};
+            var headerRow = sheet.createRow(0);
+            for (int i = 0; i < headers.length; i++) {
+                var cell = headerRow.createCell(i);
+                cell.setCellValue(headers[i]);
+                cell.setCellStyle(headerStyle);
+            }
+
+            // 数据行
+            int rowIdx = 1;
+            for (var row : allRows) {
+                var r = sheet.createRow(rowIdx++);
+                r.createCell(0).setCellValue(row.applyNo());
+                r.createCell(1).setCellValue(row.title());
+                r.createCell(2).setCellValue(row.typeName());
+                r.createCell(3).setCellValue(row.tutorName());
+                r.createCell(4).setCellValue(row.collegeName());
+                r.createCell(5).setCellValue(row.amount() != null ? row.amount().doubleValue() : 0);
+                String statusText = row.disburseStatus() == 2 ? "已下发" : (row.disburseStatus() == 1 ? "待下发" : "-");
+                r.createCell(6).setCellValue(statusText);
+                r.createCell(7).setCellValue(row.disburseTime() != null ? row.disburseTime().toString().replace("T", " ") : "-");
+                r.createCell(8).setCellValue(row.submitTime() != null ? row.submitTime().toString().replace("T", " ") : "-");
+                r.createCell(9).setCellValue(row.urgency() == 3 ? "特急" : (row.urgency() == 2 ? "紧急" : "普通"));
+            }
+
+            // 自动列宽
+            for (int i = 0; i < headers.length; i++) {
+                sheet.autoSizeColumn(i);
+            }
+
+            var baos = new java.io.ByteArrayOutputStream();
+            workbook.write(baos);
+            logOperation(user, "台账导出", "辅导员事务台账", null,
+                    String.format("college=%s, type=%s, from=%s, to=%s, rows=%d",
+                            collegeId, typeId, startDate, endDate, allRows.size()));
+            return baos.toByteArray();
+        } catch (java.io.IOException e) {
+            throw new BusinessException(50000, "生成 Excel 失败: " + e.getMessage());
+        }
+    }
+
+    private List<LedgerDetailRow> getAllLedgerDetail(Long collegeId, Long typeId,
+                                                       List<Long> collegeIds, List<Long> typeIds,
+                                                       LocalDate startDate, LocalDate endDate) {
+        StringBuilder sql = new StringBuilder("""
+                SELECT a.id, a.apply_no, a.title, t.type_name, u.real_name AS tutorName,
+                       col.college_name, a.amount, a.disburse_status, a.disburse_time,
+                       a.submit_time, a.urgency
+                FROM gc_tutor_application a
+                JOIN gc_tutor_apply_type t ON a.type_id = t.id
+                JOIN gc_user u ON a.tutor_id = u.id
+                """);
+        sql.append(TUTOR_COLLEGE_JOIN);
+        sql.append(" WHERE a.status = ? AND a.amount > 0 AND a.is_deleted = 0");
+        List<Object> params = new ArrayList<>();
+        params.add(TutorAppStatus.APPROVED.getCode());
+
+        // 优先使用多选参数，否则回退到单选
+        if (collegeIds != null && !collegeIds.isEmpty()) {
+            sql.append(" AND col.id IN (").append("?,".repeat(collegeIds.size())).deleteCharAt(sql.length() - 1).append(")");
+            params.addAll(collegeIds);
+        } else if (collegeId != null) {
+            sql.append(" AND col.id = ?");
+            params.add(collegeId);
+        }
+        if (typeIds != null && !typeIds.isEmpty()) {
+            sql.append(" AND a.type_id IN (").append("?,".repeat(typeIds.size())).deleteCharAt(sql.length() - 1).append(")");
+            params.addAll(typeIds);
+        } else if (typeId != null) {
+            sql.append(" AND a.type_id = ?");
+            params.add(typeId);
+        }
+        if (startDate != null) {
+            sql.append(" AND a.submit_time >= ?");
+            params.add(startDate.atStartOfDay());
+        }
+        if (endDate != null) {
+            sql.append(" AND a.submit_time < ?");
+            params.add(endDate.plusDays(1).atStartOfDay());
+        }
+
+        sql.append(" ORDER BY col.id, t.sort, a.submit_time DESC");
+
+        return jdbcTemplate.query(sql.toString(), (rs, rowNum) -> new LedgerDetailRow(
+                rs.getLong("id"),
+                rs.getString("apply_no"),
+                rs.getString("title"),
+                rs.getString("type_name"),
+                rs.getString("tutorName"),
+                rs.getString("college_name") != null ? rs.getString("college_name") : "未知学院",
+                rs.getBigDecimal("amount"),
+                rs.getInt("disburse_status"),
+                rs.getTimestamp("disburse_time") != null ? rs.getTimestamp("disburse_time").toLocalDateTime() : null,
+                rs.getTimestamp("submit_time") != null ? rs.getTimestamp("submit_time").toLocalDateTime() : null,
+                rs.getInt("urgency")
+        ), params.toArray());
+    }
+
+    private void appendLedgerFilters(StringBuilder countSql, StringBuilder dataSql, List<Object> params,
+                                      Long collegeId, Long typeId, LocalDate startDate, LocalDate endDate) {
+        if (collegeId != null) {
+            countSql.append(" AND col.id = ?");
+            dataSql.append(" AND col.id = ?");
+            params.add(collegeId);
+        }
+        if (typeId != null) {
+            countSql.append(" AND a.type_id = ?");
+            dataSql.append(" AND a.type_id = ?");
+            params.add(typeId);
+        }
+        if (startDate != null) {
+            countSql.append(" AND a.submit_time >= ?");
+            dataSql.append(" AND a.submit_time >= ?");
+            params.add(startDate.atStartOfDay());
+        }
+        if (endDate != null) {
+            countSql.append(" AND a.submit_time < ?");
+            dataSql.append(" AND a.submit_time < ?");
+            params.add(endDate.plusDays(1).atStartOfDay());
+        }
+    }
+
+    private void logOperation(CurrentUser user, String action, String module, String targetId, String description) {
+        try {
+            jdbcTemplate.update(
+                    "INSERT INTO gc_operation_log (user_id, operation_type, module, target_id, description, success, operation_time) VALUES (?, ?, ?, ?, ?, 1, NOW())",
+                    user.id(), action, module, targetId, description);
+        } catch (Exception ignored) {
+            // 日志记录失败不影响主流程
+        }
     }
 
     private void validateCanDisburse(TutorApplication app) {

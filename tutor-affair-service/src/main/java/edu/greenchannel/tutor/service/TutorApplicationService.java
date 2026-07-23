@@ -5,9 +5,12 @@ import edu.greenchannel.common.PageResult;
 import edu.greenchannel.tutor.dto.request.TutorApplyRequest;
 import edu.greenchannel.tutor.dto.request.TutorReviewRequest;
 import edu.greenchannel.tutor.dto.response.ApplyTypeResponse;
+import edu.greenchannel.tutor.dto.response.LedgerDetailRow;
+import edu.greenchannel.tutor.dto.response.LedgerSummaryRow;
 import edu.greenchannel.tutor.dto.response.StudentBrief;
 import edu.greenchannel.tutor.dto.response.TutorApplyView;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -57,4 +60,15 @@ public interface TutorApplicationService {
 
     /** 资金下发汇总统计 */
     Map<String, Object> getDisburseSummary(CurrentUser user);
+
+    /** 台账汇总（按学院+类型分组，支持时间段） */
+    List<LedgerSummaryRow> getLedgerSummary(CurrentUser user, LocalDate startDate, LocalDate endDate);
+
+    /** 台账明细（与汇总口径一致） */
+    PageResult<LedgerDetailRow> getLedgerDetail(CurrentUser user, Long collegeId, Long typeId, LocalDate startDate, LocalDate endDate, int page, int size);
+
+    /** 导出台账 Excel，返回文件字节数组（cIds/tIds 为多选勾选筛选） */
+    byte[] exportLedgerExcel(CurrentUser user, Long collegeId, Long typeId,
+                             List<Long> collegeIds, List<Long> typeIds,
+                             LocalDate startDate, LocalDate endDate);
 }

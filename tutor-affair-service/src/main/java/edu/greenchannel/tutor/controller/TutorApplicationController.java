@@ -8,12 +8,21 @@ import edu.greenchannel.common.PageResult;
 import edu.greenchannel.tutor.dto.request.TutorApplyRequest;
 import edu.greenchannel.tutor.dto.request.TutorReviewRequest;
 import edu.greenchannel.tutor.dto.response.ApplyTypeResponse;
+import edu.greenchannel.tutor.dto.response.LedgerDetailRow;
+import edu.greenchannel.tutor.dto.response.LedgerSummaryRow;
 import edu.greenchannel.tutor.dto.response.StudentBrief;
 import edu.greenchannel.tutor.dto.response.TutorApplyView;
 import edu.greenchannel.tutor.service.TutorApplicationService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -181,6 +190,78 @@ public class TutorApplicationController {
     @GetMapping("/disburse/summary")
     public ApiResponse<Map<String, Object>> getDisburseSummary(HttpServletRequest httpRequest) {
         return ApiResponse.success(service.getDisburseSummary(currentUser(httpRequest)));
+    }
+
+    // ---- 台账 ----
+
+    /**
+     * 台账汇总（按学院+类型分组）
+     */
+    @GetMapping("/ledger/summary")
+    @RequirePermission("school:tutor-disburse:view")
+    public ApiResponse<List<LedgerSummaryRow>> getLedgerSummary(
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            HttpServletRequest httpRequest) {
+        LocalDate start = startDate != null && !startDate.isBlank() ? LocalDate.parse(startDate) : null;
+        LocalDate end = endDate != null && !endDate.isBlank() ? LocalDate.parse(endDate) : null;
+        return ApiResponse.success(service.getLedgerSummary(currentUser(httpRequest), start, end));
+    }
+
+    /**
+     * 台账明细（与汇总口径一致）
+     */
+    @GetMapping("/ledger/detail")
+    @RequirePermission("school:tutor-disburse:view")
+    public ApiResponse<PageResult<LedgerDetailRow>> getLedgerDetail(
+            @RequestParam(required = false) Long collegeId,
+            @RequestParam(required = false) Long typeId,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size,
+            HttpServletRequest httpRequest) {
+        LocalDate start = startDate != null && !startDate.isBlank() ? LocalDate.parse(startDate) : null;
+        LocalDate end = endDate != null && !endDate.isBlank() ? LocalDate.parse(endDate) : null;
+        return ApiResponse.success(service.getLedgerDetail(currentUser(httpRequest), collegeId, typeId, start, end, page, size));
+    }
+
+    /**
+     * 导出台账 Excel（支持 collegeIds/typeIds 逗号分隔多选）
+     */
+    @GetMapping("/ledger/export")
+    @RequirePermission("school:tutor-disburse:view")
+    public void exportLedgerExcel(
+            @RequestParam(required = false) Long collegeId,
+            @RequestParam(required = false) Long typeId,
+            @RequestParam(required = false) String collegeIds,
+            @RequestParam(required = false) String typeIds,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            HttpServletRequest httpRequest,
+            HttpServletResponse response) throws IOException {
+        LocalDate start = startDate != null && !startDate.isBlank() ? LocalDate.parse(startDate) : null;
+        LocalDate end = endDate != null && !endDate.isBlank() ? LocalDate.parse(endDate) : null;
+
+        List<Long> cIds = parseCsvIds(collegeIds);
+        List<Long> tIds = parseCsvIds(typeIds);
+
+        byte[] excelBytes = service.exportLedgerExcel(currentUser(httpRequest), collegeId, typeId, cIds, tIds, start, end);
+
+        response.setContentType(MediaType.APPLICATION_OCTET_STREAM_VALUE);
+        response.setHeader(HttpHeaders.CONTENT_DISPOSITION,
+                "attachment; filename=" + java.net.URLEncoder.encode("辅导员事务台账.xlsx", "UTF-8"));
+        response.setContentLength(excelBytes.length);
+        response.getOutputStream().write(excelBytes);
+    }
+
+    private List<Long> parseCsvIds(String csv) {
+        if (csv == null || csv.isBlank()) return List.of();
+        return Arrays.stream(csv.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(Long::parseLong)
+                .toList();
     }
 
     // ---- 统计 ----
