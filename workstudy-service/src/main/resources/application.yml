@@ -8,8 +8,6 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
 server:
   port: ${SERVER_PORT:8084}
-  servlet:
-    context-path: /api/workstudy
 
 mybatis-plus:
   configuration:

@@ -28,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -117,8 +118,8 @@ public class GiftReviewServiceImpl extends ServiceImpl<ReviewRecordMapper, Revie
     @Transactional(rollbackFor = Exception.class)
     public void reviewOperate(GiftReviewOperateDTO dto) {
         StudentApply apply = studentApplyMapper.selectById(dto.getApplyId());
-        if (apply == null || apply.getIsDeleted().equals(1)) {
-            throw new BusinessException(500, "申请单据不存在或已删除");
+        if (apply == null || Objects.equals(apply.getIsDeleted(), 1)) {
+            throw new BusinessException(40400, "申请单据不存在或已删除");
         }
 
         // 从 Token 获取真实角色和ID
@@ -128,7 +129,13 @@ public class GiftReviewServiceImpl extends ServiceImpl<ReviewRecordMapper, Revie
         // 校验角色与状态匹配
         boolean match = checkRoleMatchStatus(currentRole, apply.getStatus());
         if (!match) {
-            throw new BusinessException(500, "当前单据不在你的审核节点，无法操作");
+            throw new BusinessException(40900, "当前单据不在你的审核节点，无法操作");
+        }
+        if (!Set.of(
+                ReviewActionEnum.PASS.getCode(),
+                ReviewActionEnum.REJECT_MODIFY.getCode(),
+                ReviewActionEnum.REJECT_NO_PASS.getCode()).contains(dto.getAction())) {
+            throw new BusinessException(40000, "不支持的审核操作");
         }
 
         // 插入审核流水
@@ -144,7 +151,9 @@ public class GiftReviewServiceImpl extends ServiceImpl<ReviewRecordMapper, Revie
         record.setIsDeleted(0);
         baseMapper.insert(record);
 
-        updateApplyStatusByOperate(apply, dto.getAction(), currentRole);
+        if (updateApplyStatusByOperate(apply, dto.getAction(), currentRole) != 1) {
+            throw new BusinessException(40900, "申请状态已发生变化，请刷新后重试");
+        }
     }
 
     @Override
@@ -153,16 +162,30 @@ public class GiftReviewServiceImpl extends ServiceImpl<ReviewRecordMapper, Revie
         Integer currentRole = getCurrentRole();
 
         if (ReviewRoleEnum.SCHOOL_ADMIN.getCode().equals(currentRole)) {
-            throw new BusinessException(500, "学校账号无需批量提交操作");
+            throw new BusinessException(40300, "学校账号无需批量提交操作");
+        }
+        if (!ReviewRoleEnum.TUTOR.getCode().equals(currentRole)
+                && !ReviewRoleEnum.COLLEGE_ADMIN.getCode().equals(currentRole)) {
+            throw new BusinessException(40300, "该角色无批量提交权限");
         }
 
+        Integer currentStatus = currentRole == ReviewRoleEnum.TUTOR.getCode() ? 2 : 3;
         Integer targetStatus = currentRole == ReviewRoleEnum.TUTOR.getCode() ? 3 : 4;
+        List<Long> ids = dto.getApplyIdList().stream().filter(Objects::nonNull).distinct().toList();
+        if (ids.isEmpty() || ids.size() != dto.getApplyIdList().size()) {
+            throw new BusinessException(40000, "申请单列表包含空值或重复项");
+        }
 
         LambdaUpdateWrapper<StudentApply> updateWrapper = new LambdaUpdateWrapper<>();
-        updateWrapper.in(StudentApply::getId, dto.getApplyIdList())
+        updateWrapper.in(StudentApply::getId, ids)
+                .eq(StudentApply::getStatus, currentStatus)
+                .eq(StudentApply::getIsDeleted, 0)
                 .set(StudentApply::getStatus, targetStatus)
                 .set(StudentApply::getUpdateTime, LocalDateTime.now());
-        studentApplyMapper.update(null, updateWrapper);
+        int updated = studentApplyMapper.update(null, updateWrapper);
+        if (updated != ids.size()) {
+            throw new BusinessException(40900, "部分申请不在当前审核节点，请刷新后重试");
+        }
     }
 
     @Override
@@ -170,22 +193,26 @@ public class GiftReviewServiceImpl extends ServiceImpl<ReviewRecordMapper, Revie
     public void cancelPassApply(Long applyId) {
         Integer currentRole = getCurrentRole();
         if (!ReviewRoleEnum.SCHOOL_ADMIN.getCode().equals(currentRole)) {
-            throw new BusinessException(403, "仅学校管理员可取消已通过申请");
+            throw new BusinessException(40300, "仅学校管理员可取消已通过申请");
         }
 
         StudentApply apply = studentApplyMapper.selectById(applyId);
-        if (apply == null || apply.getIsDeleted().equals(1)) {
-            throw new BusinessException(500, "申请单据不存在或已删除");
+        if (apply == null || Objects.equals(apply.getIsDeleted(), 1)) {
+            throw new BusinessException(40400, "申请单据不存在或已删除");
         }
-        if (!apply.getStatus().equals(5)) {
-            throw new BusinessException(500, "仅已终审通过单据可取消");
+        if (!Objects.equals(apply.getStatus(), 5)) {
+            throw new BusinessException(40900, "仅已终审通过单据可取消");
         }
 
         LambdaUpdateWrapper<StudentApply> updateWrapper = new LambdaUpdateWrapper<>();
         updateWrapper.eq(StudentApply::getId, applyId)
+                .eq(StudentApply::getStatus, 5)
+                .eq(StudentApply::getIsDeleted, 0)
                 .set(StudentApply::getStatus, 2)
                 .set(StudentApply::getUpdateTime, LocalDateTime.now());
-        studentApplyMapper.update(null, updateWrapper);
+        if (studentApplyMapper.update(null, updateWrapper) != 1) {
+            throw new BusinessException(40900, "申请状态已发生变化，请刷新后重试");
+        }
     }
 
     @Override
@@ -342,9 +369,11 @@ public class GiftReviewServiceImpl extends ServiceImpl<ReviewRecordMapper, Revie
         return false;
     }
 
-    private void updateApplyStatusByOperate(StudentApply apply, Integer action, Integer role) {
+    private int updateApplyStatusByOperate(StudentApply apply, Integer action, Integer role) {
         LambdaUpdateWrapper<StudentApply> updateWrapper = new LambdaUpdateWrapper<>();
-        updateWrapper.eq(StudentApply::getId, apply.getId());
+        updateWrapper.eq(StudentApply::getId, apply.getId())
+                .eq(StudentApply::getStatus, apply.getStatus())
+                .eq(StudentApply::getIsDeleted, 0);
 
         if (ReviewActionEnum.PASS.getCode().equals(action)) {
             if (role == 2) {  // 辅导员
@@ -362,7 +391,7 @@ public class GiftReviewServiceImpl extends ServiceImpl<ReviewRecordMapper, Revie
             updateWrapper.set(StudentApply::getStatus, 1);
         }
         updateWrapper.set(StudentApply::getUpdateTime, LocalDateTime.now());
-        studentApplyMapper.update(null, updateWrapper);
+        return studentApplyMapper.update(null, updateWrapper);
     }
 
 

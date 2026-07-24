@@ -7,7 +7,9 @@ import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import edu.greenchannel.auth.TokenService;
 import edu.greenchannel.auth.CurrentUser;
 import edu.greenchannel.common.BusinessException;
+import edu.greenchannel.gift.dto.review.BatchSubmitDTO;
 import edu.greenchannel.gift.dto.review.GiftPickupDTO;
+import edu.greenchannel.gift.dto.review.GiftReviewOperateDTO;
 import edu.greenchannel.gift.entity.StudentApply;
 import edu.greenchannel.gift.mapper.StudentApplyMapper;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,6 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -52,8 +55,8 @@ class GiftReviewServiceImplTest {
                 new MapperBuilderAssistant(new MybatisConfiguration(), "gift-review-test"),
                 StudentApply.class);
         service = new GiftReviewServiceImpl(studentApplyMapper, request, tokenService);
-        when(request.getHeader("Authorization")).thenReturn("Bearer test-token");
-        when(tokenService.resolve("test-token")).thenReturn(Optional.of(new CurrentUser(
+        lenient().when(request.getHeader("Authorization")).thenReturn("Bearer test-token");
+        lenient().when(tokenService.resolve("test-token")).thenReturn(Optional.of(new CurrentUser(
                 88L, "school01", "测试资助中心", 4, "学校资助中心",
                 List.of("SCHOOL_ADMIN"), List.of("gift:pickup:manage"), List.of("礼包核销管理"))));
     }
@@ -122,6 +125,54 @@ class GiftReviewServiceImplTest {
         verify(studentApplyMapper, never()).update(isNull(), any(LambdaUpdateWrapper.class));
     }
 
+    @Test
+    void reviewReturnsNotFoundForMissingApplication() {
+        when(studentApplyMapper.selectById(99L)).thenReturn(null);
+        GiftReviewOperateDTO dto = review(99L, 1);
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> service.reviewOperate(dto));
+
+        assertEquals(40400, exception.getCode());
+    }
+
+    @Test
+    void reviewRejectsApplicationOutsideCurrentNode() {
+        when(studentApplyMapper.selectById(1L)).thenReturn(application(2, 0));
+        GiftReviewOperateDTO dto = review(1L, 1);
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> service.reviewOperate(dto));
+
+        assertEquals(40900, exception.getCode());
+    }
+
+    @Test
+    void batchSubmitRejectsPartialStateUpdate() {
+        mockUser(2L, 2, "TUTOR");
+        when(studentApplyMapper.update(isNull(), any(LambdaUpdateWrapper.class))).thenReturn(1);
+        BatchSubmitDTO dto = new BatchSubmitDTO();
+        dto.setApplyIdList(List.of(1L, 2L));
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> service.batchSubmit(dto));
+
+        assertEquals(40900, exception.getCode());
+    }
+
+    @Test
+    void batchSubmitRejectsDuplicateIds() {
+        mockUser(2L, 2, "TUTOR");
+        BatchSubmitDTO dto = new BatchSubmitDTO();
+        dto.setApplyIdList(List.of(1L, 1L));
+
+        BusinessException exception = assertThrows(BusinessException.class,
+                () -> service.batchSubmit(dto));
+
+        assertEquals(40000, exception.getCode());
+        verify(studentApplyMapper, never()).update(isNull(), any(LambdaUpdateWrapper.class));
+    }
+
     private static StudentApply application(int status, int pickupStatus) {
         StudentApply apply = new StudentApply();
         apply.setId(1L);
@@ -138,5 +189,19 @@ class GiftReviewServiceImplTest {
         dto.setOperatorId(operatorId);
         dto.setRemark(remark);
         return dto;
+    }
+
+    private static GiftReviewOperateDTO review(Long applyId, Integer action) {
+        GiftReviewOperateDTO dto = new GiftReviewOperateDTO();
+        dto.setApplyId(applyId);
+        dto.setAction(action);
+        dto.setComment("验收审核");
+        return dto;
+    }
+
+    private void mockUser(long userId, int userType, String role) {
+        when(tokenService.resolve("test-token")).thenReturn(Optional.of(new CurrentUser(
+                userId, role.toLowerCase(), "测试审核人", userType, role,
+                List.of(role), List.of("gift:review:view"), List.of("绿色通道审核"))));
     }
 }
