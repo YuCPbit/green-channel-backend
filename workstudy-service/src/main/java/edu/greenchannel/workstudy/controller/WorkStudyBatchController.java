@@ -9,7 +9,7 @@ import edu.greenchannel.workstudy.service.WorkStudyBatchService;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/batch")
+@RequestMapping("/api/batch")
 public class WorkStudyBatchController {
 
     private final WorkStudyBatchService batchService;

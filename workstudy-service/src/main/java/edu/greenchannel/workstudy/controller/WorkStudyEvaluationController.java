@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/evaluation")
+@RequestMapping("/api/evaluation")
 @RequiredArgsConstructor
 public class WorkStudyEvaluationController {
     private final WorkStudyEvaluationService evaluationService;
@@ -97,7 +97,7 @@ public class WorkStudyEvaluationController {
     }
 
     /**
-     * 学生查看本人评价
+     * 学生查看本人评价（仅返回当前登录学生本人的评价，忽略客户端传入的studentId）
      */
     @GetMapping("/my")
     @RequirePermission("school:workstudy:view")
@@ -106,8 +106,10 @@ public class WorkStudyEvaluationController {
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) Long studentId,
             @RequestParam(required = false) Integer evalYear,
-            @RequestParam(required = false) Integer evalMonth) {
-        PageResult<WorkStudyEvaluationVO> result = evaluationService.getMyEvaluations(page, size, studentId, evalYear, evalMonth);
+            @RequestParam(required = false) Integer evalMonth,
+            @RequestAttribute(AuthInterceptor.CURRENT_USER_ATTRIBUTE) CurrentUser currentUser) {
+        PageResult<WorkStudyEvaluationVO> result = evaluationService.getMyEvaluations(
+                page, size, evalYear, evalMonth, currentUser);
         return ApiResponse.success(result);
     }
 

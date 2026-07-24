@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.YearMonth;
 
 @RestController
-@RequestMapping("/salary")
+@RequestMapping("/api/salary")
 public class WorkStudySalaryController {
 
     private final WorkStudySalaryService salaryService;

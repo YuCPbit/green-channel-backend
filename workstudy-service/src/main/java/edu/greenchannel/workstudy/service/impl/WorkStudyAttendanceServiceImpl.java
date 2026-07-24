@@ -2,9 +2,12 @@ package edu.greenchannel.workstudy.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import edu.greenchannel.common.BusinessException;
 import edu.greenchannel.workstudy.entity.WorkStudyAttendance;
+import edu.greenchannel.workstudy.entity.WorkStudyHire;
 import edu.greenchannel.workstudy.mapper.WorkStudyAttendanceMapper;
 import edu.greenchannel.workstudy.service.WorkStudyAttendanceService;
+import edu.greenchannel.workstudy.service.WorkStudyHireService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,6 +28,9 @@ public class WorkStudyAttendanceServiceImpl
         extends ServiceImpl<WorkStudyAttendanceMapper, WorkStudyAttendance>
         implements WorkStudyAttendanceService {
 
+    private final WorkStudyAttendanceMapper attendanceMapper;
+    private final WorkStudyHireService hireService;
+
     private static final LocalTime WORK_START_TIME = LocalTime.of(8, 30); // 上班时间
     private static final LocalTime WORK_END_TIME = LocalTime.of(17, 30);   // 下班时间
     private static final int LATE_THRESHOLD_MINUTES = 15; // 15分钟内不算迟到
@@ -33,17 +39,20 @@ public class WorkStudyAttendanceServiceImpl
     @Override
     @Transactional
     public Long checkIn(Long hireId, Long studentId, String location) {
+        // 校验录用记录存在且有效，且与当前学生匹配
+        validateHireOwnership(hireId, studentId);
+
         LocalDate today = LocalDate.now();
 
         // 校验：同一天不能重复签到
         if (existsToday(hireId, today)) {
-            throw new edu.greenchannel.common.BusinessException(40000, "今日已签到，请勿重复操作");
+            throw new BusinessException(40000, "今日已签到，请勿重复操作");
         }
 
         // 校验：周末不允许打卡（可选）
         if (today.getDayOfWeek() == DayOfWeek.SATURDAY ||
                 today.getDayOfWeek() == DayOfWeek.SUNDAY) {
-            throw new edu.greenchannel.common.BusinessException(40000, "周末无需打卡");
+            throw new BusinessException(40000, "周末无需打卡");
         }
 
         WorkStudyAttendance attendance = new WorkStudyAttendance();
@@ -73,11 +82,11 @@ public class WorkStudyAttendanceServiceImpl
         validateAttendanceExists(attendance);
 
         if (!attendance.getStudentId().equals(studentId)) {
-            throw new edu.greenchannel.common.BusinessException(40300, "无权签退他人的考勤记录");
+            throw new BusinessException(40300, "无权签退他人的考勤记录");
         }
 
         if (attendance.getCheckOutTime() != null) {
-            throw new edu.greenchannel.common.BusinessException(40000, "今日已签退");
+            throw new BusinessException(40000, "今日已签退");
         }
 
         LocalDateTime now = LocalDateTime.now();
@@ -104,9 +113,12 @@ public class WorkStudyAttendanceServiceImpl
     @Transactional
     public Long applyLeave(Long hireId, Long studentId, LocalDate leaveDate,
                            Integer leaveType, String reason) {
+        // 校验录用记录存在且有效，且与当前学生匹配
+        validateHireOwnership(hireId, studentId);
+
         // 校验：当天不能有打卡记录
         if (existsToday(hireId, leaveDate)) {
-            throw new edu.greenchannel.common.BusinessException(40000, "当天已有打卡记录，无法请假");
+            throw new BusinessException(40000, "当天已有打卡记录，无法请假");
         }
 
         WorkStudyAttendance attendance = new WorkStudyAttendance();
@@ -131,9 +143,12 @@ public class WorkStudyAttendanceServiceImpl
     public Long applyRepair(Long hireId, Long studentId, LocalDate attendanceDate,
                             LocalDateTime checkInTime, LocalDateTime checkOutTime,
                             String reason) {
+        // 校验录用记录存在且有效，且与当前学生匹配
+        validateHireOwnership(hireId, studentId);
+
         // 校验：当天不能有正常打卡
         if (existsToday(hireId, attendanceDate)) {
-            throw new edu.greenchannel.common.BusinessException(40000, "当天已有打卡记录");
+            throw new BusinessException(40000, "当天已有打卡记录");
         }
 
         WorkStudyAttendance attendance = new WorkStudyAttendance();
@@ -163,7 +178,7 @@ public class WorkStudyAttendanceServiceImpl
         validateAttendanceExists(attendance);
 
         if (attendance.getApprovalStatus() != 1) {
-            throw new edu.greenchannel.common.BusinessException(40000, "该申请已审批或无需审批");
+            throw new BusinessException(40000, "该申请已审批或无需审批");
         }
 
         attendance.setApproverId(approverId);
@@ -207,6 +222,22 @@ public class WorkStudyAttendanceServiceImpl
 
     // ==================== 私有方法 ====================
 
+    /**
+     * 校验录用记录存在、在岗且属于当前学生。
+     */
+    private void validateHireOwnership(Long hireId, Long studentId) {
+        WorkStudyHire hire = hireService.getById(hireId);
+        if (hire == null || hire.getIsDeleted() == 1) {
+            throw new BusinessException(40400, "录用记录不存在");
+        }
+        if (hire.getHireStatus() != 1) {
+            throw new BusinessException(40900, "当前不在岗，无法操作");
+        }
+        if (!hire.getStudentId().equals(studentId)) {
+            throw new BusinessException(40300, "该录用记录不属于当前学生");
+        }
+    }
+
     private boolean existsToday(Long hireId, LocalDate date) {
         return lambdaQuery()
                 .eq(WorkStudyAttendance::getHireId, hireId)
@@ -216,7 +247,7 @@ public class WorkStudyAttendanceServiceImpl
 
     private void validateAttendanceExists(WorkStudyAttendance attendance) {
         if (attendance == null) {
-            throw new edu.greenchannel.common.BusinessException(40000, "考勤记录不存在");
+            throw new BusinessException(40000, "考勤记录不存在");
         }
     }
 

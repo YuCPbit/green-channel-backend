@@ -1,6 +1,7 @@
 package edu.greenchannel.workstudy.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
+import edu.greenchannel.auth.CurrentUser;
 import edu.greenchannel.workstudy.dto.ActiveHireVO;
 import edu.greenchannel.workstudy.dto.PageResult;
 import edu.greenchannel.workstudy.dto.WorkStudyEvaluationVO;
@@ -36,9 +37,9 @@ public interface WorkStudyEvaluationService extends IService<WorkStudyEvaluation
     void deleteEvaluation(Long id);
 
     /**
-     * 学生查看本人评价
+     * 学生查看本人评价（studentId 由服务端根据当前登录用户强制确定，忽略客户端传参）
      */
-    PageResult<WorkStudyEvaluationVO> getMyEvaluations(int page, int size, Long studentId, Integer evalYear, Integer evalMonth);
+    PageResult<WorkStudyEvaluationVO> getMyEvaluations(int page, int size, Integer evalYear, Integer evalMonth, CurrentUser currentUser);
 
     /**
      * 获取在岗录用列表（支持姓名/学号搜索）

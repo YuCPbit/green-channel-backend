@@ -9,7 +9,7 @@ import edu.greenchannel.workstudy.service.WorkStudyPositionService;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/position")
+@RequestMapping("/api/position")
 public class WorkStudyPositionController {
 
     private final WorkStudyPositionService positionService;

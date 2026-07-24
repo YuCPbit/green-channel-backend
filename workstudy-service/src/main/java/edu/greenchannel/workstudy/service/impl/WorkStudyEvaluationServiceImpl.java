@@ -3,14 +3,17 @@ package edu.greenchannel.workstudy.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import edu.greenchannel.auth.CurrentUser;
 import edu.greenchannel.common.BusinessException;
 import edu.greenchannel.workstudy.dto.ActiveHireVO;
 import edu.greenchannel.workstudy.dto.PageResult;
 import edu.greenchannel.workstudy.dto.WorkStudyEvaluationVO;
 import edu.greenchannel.workstudy.entity.WorkStudyEvaluation;
+import edu.greenchannel.workstudy.entity.WorkStudyHire;
 import edu.greenchannel.workstudy.mapper.WorkStudyEvaluationMapper;
 import edu.greenchannel.workstudy.service.NotificationService;
 import edu.greenchannel.workstudy.service.WorkStudyEvaluationService;
+import edu.greenchannel.workstudy.service.WorkStudyHireService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DuplicateKeyException;
@@ -30,6 +33,7 @@ public class WorkStudyEvaluationServiceImpl
 
     private final WorkStudyEvaluationMapper evaluationMapper;
     private final NotificationService notificationService;
+    private final WorkStudyHireService hireService;
 
     @Override
     @Transactional
@@ -37,6 +41,18 @@ public class WorkStudyEvaluationServiceImpl
         // 校验评分范围
         if (evaluation.getScore() == null || evaluation.getScore() < 1 || evaluation.getScore() > 5) {
             throw new BusinessException(40000, "评分必须在1-5之间");
+        }
+
+        // 校验录用记录存在且有效，且学生与录用记录匹配
+        WorkStudyHire hire = hireService.getById(evaluation.getHireId());
+        if (hire == null || hire.getIsDeleted() == 1) {
+            throw new BusinessException(40400, "录用记录不存在");
+        }
+        if (hire.getHireStatus() != 1) {
+            throw new BusinessException(40900, "该录用记录不在岗，无法评价");
+        }
+        if (!hire.getStudentId().equals(evaluation.getStudentId())) {
+            throw new BusinessException(40300, "学生ID与录用记录不匹配");
         }
 
         log.info("提交月度评价：hireId={}, 学生ID={}, 年份={}, 月份={}, 评分={}",
@@ -124,8 +140,13 @@ public class WorkStudyEvaluationServiceImpl
 
     @Override
     public PageResult<WorkStudyEvaluationVO> getMyEvaluations(int pageNum, int pageSize,
-            Long studentId, Integer evalYear, Integer evalMonth) {
-        return listEvaluations(pageNum, pageSize, null, studentId, evalYear, evalMonth);
+            Integer evalYear, Integer evalMonth, CurrentUser currentUser) {
+        // 根据当前登录用户强制确定 studentId，杜绝客户端传参越权
+        Long myStudentId = evaluationMapper.findStudentIdByUserId(currentUser.id());
+        if (myStudentId == null) {
+            throw new BusinessException(40400, "未找到您的学生档案，无法查看评价");
+        }
+        return listEvaluations(pageNum, pageSize, null, myStudentId, evalYear, evalMonth);
     }
 
     @Override
