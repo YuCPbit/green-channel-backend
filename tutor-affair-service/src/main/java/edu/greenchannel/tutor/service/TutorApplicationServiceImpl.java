@@ -193,6 +193,26 @@ public class TutorApplicationServiceImpl implements TutorApplicationService {
     public TutorApplyView getDetail(CurrentUser user, Long id) {
         TutorApplication app = applicationRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(40400, "申请不存在"));
+
+        // 可见性校验
+        if (user.userType() == 2) {
+            // 辅导员只能看自己的申请
+            if (!app.getTutorId().equals(user.id())) {
+                throw new BusinessException(40300, "无权查看其他辅导员的申请");
+            }
+        } else if (user.userType() == 3) {
+            // 学院管理员只能看本学院辅导员的申请
+            Long userCollegeId = findCollegeIdByUserId(user.id());
+            Long appCollegeId = findCollegeIdByTutorId(app.getTutorId());
+            if (userCollegeId == null || !userCollegeId.equals(appCollegeId)) {
+                throw new BusinessException(40300, "无权查看其他学院的申请");
+            }
+        } else if (user.userType() != 4) {
+            // 非学校管理员（如学生）无权查看
+            throw new BusinessException(40300, "无权查看该申请");
+        }
+        // userType=4 学校管理员可查看所有
+
         return buildApplyView(app);
     }
 
@@ -216,6 +236,14 @@ public class TutorApplicationServiceImpl implements TutorApplicationService {
             reviewerRole = 3; // 学校
         } else {
             throw new BusinessException(40900, "当前申请状态不允许审核操作");
+        }
+
+        // 校验用户角色与当前审核阶段是否匹配
+        if (reviewerRole == 2 && user.userType() != 3) {
+            throw new BusinessException(40300, "仅学院管理员可进行学院级审核");
+        }
+        if (reviewerRole == 3 && user.userType() != 4) {
+            throw new BusinessException(40300, "仅学校管理员可进行学校级审核");
         }
 
         // 保存审核记录
@@ -264,6 +292,9 @@ public class TutorApplicationServiceImpl implements TutorApplicationService {
     @Override
     @Transactional
     public void disburse(CurrentUser user, Long id) {
+        if (user.userType() != 4) {
+            throw new BusinessException(40300, "仅学校资助中心有权下发资金");
+        }
         TutorApplication app = applicationRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(40400, "申请不存在"));
         validateCanDisburse(app);
@@ -273,6 +304,9 @@ public class TutorApplicationServiceImpl implements TutorApplicationService {
     @Override
     @Transactional
     public int batchDisburse(CurrentUser user, List<Long> ids) {
+        if (user.userType() != 4) {
+            throw new BusinessException(40300, "仅学校资助中心有权下发资金");
+        }
         if (ids == null || ids.isEmpty()) {
             throw new BusinessException(40000, "请选择要下发的申请");
         }
@@ -297,6 +331,9 @@ public class TutorApplicationServiceImpl implements TutorApplicationService {
 
     @Override
     public PageResult<TutorApplyView> listDisburse(CurrentUser user, Integer disburseStatus, Long typeId, int page, int size) {
+        if (user.userType() != 4) {
+            throw new BusinessException(40300, "仅学校资助中心有权查看资金下发列表");
+        }
         // 原生查询自带 ORDER BY，Sort 必须为 unsorted，否则会与原生 SQL 冲突导致 500
         Pageable pageable = PageRequest.of(page - 1, size, Sort.unsorted());
         Integer approvedStatus = TutorAppStatus.APPROVED.getCode();
@@ -322,6 +359,9 @@ public class TutorApplicationServiceImpl implements TutorApplicationService {
 
     @Override
     public Map<String, Object> getDisburseSummary(CurrentUser user) {
+        if (user.userType() != 4) {
+            throw new BusinessException(40300, "仅学校资助中心有权查看资金下发汇总");
+        }
         Map<String, Object> summary = new LinkedHashMap<>();
         try {
             Long pendingCount = jdbcTemplate.queryForObject(
@@ -651,6 +691,9 @@ public class TutorApplicationServiceImpl implements TutorApplicationService {
 
     @Override
     public Map<String, Object> getStatistics(CurrentUser user) {
+        if (user.userType() != 3 && user.userType() != 4) {
+            throw new BusinessException(40300, "仅管理员可查看统计信息");
+        }
         Map<String, Object> stats = new LinkedHashMap<>();
 
         // 统计各状态数量
@@ -797,6 +840,34 @@ public class TutorApplicationServiceImpl implements TutorApplicationService {
                             rs.getObject("povertyLevel") != null ? rs.getInt("povertyLevel") : null
                     ),
                     studentId);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * 通过用户ID查询其所属学院ID。
+     */
+    private Long findCollegeIdByUserId(Long userId) {
+        try {
+            return jdbcTemplate.queryForObject(
+                    "SELECT college_id FROM gc_user WHERE id = ? AND is_deleted = 0",
+                    Long.class, userId);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * 通过辅导员ID查询其所属学院ID（取第一个关联的学院）。
+     */
+    private Long findCollegeIdByTutorId(Long tutorId) {
+        try {
+            return jdbcTemplate.queryForObject(
+                    "SELECT m.college_id FROM gc_class c " +
+                            "JOIN gc_major m ON c.major_id = m.id " +
+                            "WHERE c.tutor_id = ? AND c.is_deleted = 0 LIMIT 1",
+                    Long.class, tutorId);
         } catch (Exception e) {
             return null;
         }

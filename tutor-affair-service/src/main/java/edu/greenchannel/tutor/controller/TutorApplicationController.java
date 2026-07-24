@@ -175,6 +175,7 @@ public class TutorApplicationController {
      * 查询资金下发列表（支持按状态筛选，0-不涉及 1-待下发 2-已下发）
      */
     @GetMapping("/disburse/list")
+    @RequirePermission("school:tutor-disburse:view")
     public ApiResponse<PageResult<TutorApplyView>> listDisburse(
             @RequestParam(required = false) Integer disburseStatus,
             @RequestParam(required = false) Long typeId,
@@ -188,6 +189,7 @@ public class TutorApplicationController {
      * 资金下发汇总统计
      */
     @GetMapping("/disburse/summary")
+    @RequirePermission("school:tutor-disburse:view")
     public ApiResponse<Map<String, Object>> getDisburseSummary(HttpServletRequest httpRequest) {
         return ApiResponse.success(service.getDisburseSummary(currentUser(httpRequest)));
     }
