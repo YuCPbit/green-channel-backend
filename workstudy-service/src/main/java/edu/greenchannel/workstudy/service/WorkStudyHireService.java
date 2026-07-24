@@ -3,6 +3,8 @@ package edu.greenchannel.workstudy.service;
 import com.baomidou.mybatisplus.spring.service.IService;
 import edu.greenchannel.workstudy.entity.WorkStudyHire;
 
+import java.util.List;
+
 public interface WorkStudyHireService extends IService<WorkStudyHire> {
 
     /**
@@ -14,4 +16,6 @@ public interface WorkStudyHireService extends IService<WorkStudyHire> {
      * 学生离岗
      */
     void leavePosition(Long hireId, Integer leaveType, String reason, Long operatorId);
+
+    List<WorkStudyHire> listHires(Long studentId, Integer hireStatus);
 }

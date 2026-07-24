@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 class GatewayServiceApplicationTest {
 
     @Autowired
@@ -31,10 +31,11 @@ class GatewayServiceApplicationTest {
     void contextLoadsWithConfiguredRoutes() {
         assertEquals("gift-service", routeId(0));
         assertEquals("subsidy-service", routeId(1));
-        assertEquals("workstudy-service", routeId(2));
-        assertEquals("dashboard-service", routeId(3));
-        assertEquals("platform-service", routeId(4));
-        assertEquals("Path=/api/**", environment.getProperty(routeKey(4) + ".predicates[0]"));
+        assertEquals("tutor-affair-service", routeId(2));
+        assertEquals("workstudy-service", routeId(3));
+        assertEquals("dashboard-service", routeId(4));
+        assertEquals("platform-service", routeId(5));
+        assertEquals("Path=/api/**", environment.getProperty(routeKey(5) + ".predicates[0]"));
     }
 
     @Test

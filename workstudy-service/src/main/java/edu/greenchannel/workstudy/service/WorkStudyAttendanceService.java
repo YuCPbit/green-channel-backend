@@ -7,6 +7,7 @@ import org.springframework.lang.NonNull;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public interface WorkStudyAttendanceService extends IService<WorkStudyAttendance> {
 
@@ -28,6 +29,8 @@ public interface WorkStudyAttendanceService extends IService<WorkStudyAttendance
 
     // ==================== 4. 月度汇总（给薪酬用） ====================
     AttendanceSummary summarizeMonthly(@NonNull Long hireId, int year, int month);
+
+    List<WorkStudyAttendance> listRecords(Long studentId, Long hireId, Integer status);
 
     // ==================== 5. 内部DTO ====================
     record AttendanceSummary(@NonNull BigDecimal totalHours, int workDays) {}

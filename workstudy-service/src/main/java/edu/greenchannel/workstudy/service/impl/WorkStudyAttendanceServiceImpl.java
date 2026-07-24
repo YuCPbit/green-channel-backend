@@ -20,6 +20,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -177,6 +178,18 @@ public class WorkStudyAttendanceServiceImpl
                 .count();
 
         return new AttendanceSummary(totalHours, (int) workDays);
+    }
+
+    @Override
+    public List<WorkStudyAttendance> listRecords(Long studentId, Long hireId, Integer status) {
+        return lambdaQuery()
+                .eq(studentId != null, WorkStudyAttendance::getStudentId, studentId)
+                .eq(hireId != null, WorkStudyAttendance::getHireId, hireId)
+                .eq(status != null, WorkStudyAttendance::getStatus, status)
+                .eq(WorkStudyAttendance::getDeleted, 0)
+                .orderByDesc(WorkStudyAttendance::getAttendanceDate)
+                .orderByDesc(WorkStudyAttendance::getCreateTime)
+                .list();
     }
 
     // ==================== 私有方法 ====================

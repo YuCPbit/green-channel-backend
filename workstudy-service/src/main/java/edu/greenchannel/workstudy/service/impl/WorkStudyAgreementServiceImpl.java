@@ -1,6 +1,7 @@
 package edu.greenchannel.workstudy.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import edu.greenchannel.common.BusinessException;
 import edu.greenchannel.workstudy.entity.WorkStudyAgreement;
@@ -20,6 +21,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
+import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Slf4j
@@ -37,7 +40,7 @@ public class WorkStudyAgreementServiceImpl
     @Transactional(rollbackFor = Exception.class)
     public void generateAgreement(WorkStudyHire hire) {
         // 1. 校验：同一录用记录只能生成一个协议
-        long count = count(new LambdaQueryWrapper<WorkStudyAgreement>()
+        long count = agreementMapper.selectCount(new LambdaQueryWrapper<WorkStudyAgreement>()
                 .eq(WorkStudyAgreement::getHireId, hire.getId())
                 .eq(WorkStudyAgreement::getDeleted, 0));
 
@@ -61,7 +64,7 @@ public class WorkStudyAgreementServiceImpl
         String agreementNo = generateAgreementNo(hire.getId());
 
         // 4. 生成协议内容
-        String templateContent = generateTemplateContent(hire, position, batch);
+        String templateContent = generateTemplateContent(hire, position, batch, agreementNo);
 
         // 5. 创建协议记录
         WorkStudyAgreement agreement = new WorkStudyAgreement();
@@ -96,8 +99,8 @@ public class WorkStudyAgreementServiceImpl
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void signAgreement(Long agreementId, Long studentId) {
-        WorkStudyAgreement agreement = getById(agreementId);
-        if (agreement == null || agreement.getDeleted() == 1) {
+        WorkStudyAgreement agreement = agreementMapper.selectById(agreementId);
+        if (agreement == null || Objects.equals(agreement.getDeleted(), 1)) {
             throw new BusinessException(40400, "协议不存在");
         }
 
@@ -107,7 +110,7 @@ public class WorkStudyAgreementServiceImpl
         }
 
         // 2. 状态校验
-        if (agreement.getSignStatus() != 0) {
+        if (!Objects.equals(agreement.getSignStatus(), 0)) {
             throw new BusinessException(40000, "协议已签署或已过期");
         }
 
@@ -121,7 +124,7 @@ public class WorkStudyAgreementServiceImpl
         agreement.setStudentSignTime(LocalDateTime.now());
         agreement.setUpdateTime(LocalDateTime.now());
 
-        updateById(agreement);
+        agreementMapper.updateById(agreement);
         log.info("学生签署协议成功：agreementId={}, studentId={}", agreementId, studentId);
     }
 
@@ -129,24 +132,65 @@ public class WorkStudyAgreementServiceImpl
      * 续签协议
      */
     @Transactional(rollbackFor = Exception.class)
-    public void renewAgreement(Long agreementId, Long operatorId) {
-        WorkStudyAgreement agreement = getById(agreementId);
-        if (agreement == null || agreement.getDeleted() == 1) {
+    @Override
+    public void renewAgreement(Long agreementId, Long operatorId, LocalDate newEndDate) {
+        WorkStudyAgreement agreement = agreementMapper.selectById(agreementId);
+        if (agreement == null || Objects.equals(agreement.getDeleted(), 1)) {
             throw new BusinessException(40400, "协议不存在");
         }
 
-        // 只有已签署的协议才能续签
-        if (agreement.getSignStatus() != 1) {
+        if (!Objects.equals(agreement.getSignStatus(), 1)
+                && !Objects.equals(agreement.getSignStatus(), 3)) {
             throw new BusinessException(40000, "协议状态不允许续签");
         }
 
-        // 更新续签次数
-        agreement.setRenewCount(agreement.getRenewCount() + 1);
-        agreement.setSignStatus(3); // 3-已续签
-        agreement.setUpdateTime(LocalDateTime.now());
+        LocalDate currentEndDate = agreement.getEndDate();
+        if (currentEndDate == null) {
+            throw new BusinessException(40900, "协议缺少到期日期，无法续签");
+        }
+        LocalDate targetEndDate = newEndDate == null ? currentEndDate.plusMonths(6) : newEndDate;
+        if (!targetEndDate.isAfter(currentEndDate)) {
+            throw new BusinessException(40000, "续签后的到期日期必须晚于原到期日期");
+        }
 
-        updateById(agreement);
-        log.info("协议续签成功：agreementId={}, renewCount={}", agreementId, agreement.getRenewCount());
+        int currentRenewCount = agreement.getRenewCount() == null ? 0 : agreement.getRenewCount();
+        LambdaUpdateWrapper<WorkStudyAgreement> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(WorkStudyAgreement::getId, agreementId)
+                .eq(WorkStudyAgreement::getRenewCount, currentRenewCount)
+                .in(WorkStudyAgreement::getSignStatus, 1, 3)
+                .eq(WorkStudyAgreement::getDeleted, 0)
+                .set(WorkStudyAgreement::getEndDate, targetEndDate)
+                .set(WorkStudyAgreement::getRenewCount, currentRenewCount + 1)
+                .set(WorkStudyAgreement::getSignStatus, 3)
+                .set(WorkStudyAgreement::getUpdateTime, LocalDateTime.now());
+        if (agreementMapper.update(null, updateWrapper) != 1) {
+            throw new BusinessException(40900, "协议状态已变化，请刷新后重试");
+        }
+        log.info("协议续签成功：agreementId={}, operatorId={}, renewCount={}, endDate={}",
+                agreementId, operatorId, currentRenewCount + 1, targetEndDate);
+    }
+
+    @Override
+    public WorkStudyAgreement getAccessibleAgreement(Long agreementId, Long userId, Integer userType) {
+        WorkStudyAgreement agreement = agreementMapper.selectById(agreementId);
+        if (agreement == null || Objects.equals(agreement.getDeleted(), 1)) {
+            throw new BusinessException(40400, "协议不存在");
+        }
+        if (Objects.equals(userType, 1) && !Objects.equals(agreement.getStudentId(), userId)) {
+            throw new BusinessException(40300, "无权查看该协议");
+        }
+        return agreement;
+    }
+
+    @Override
+    public List<WorkStudyAgreement> listAgreements(Long studentId, Integer signStatus) {
+        LambdaQueryWrapper<WorkStudyAgreement> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(WorkStudyAgreement::getDeleted, 0)
+                .eq(studentId != null, WorkStudyAgreement::getStudentId, studentId)
+                .eq(signStatus != null, WorkStudyAgreement::getSignStatus, signStatus)
+                .orderByAsc(WorkStudyAgreement::getEndDate)
+                .orderByDesc(WorkStudyAgreement::getCreateTime);
+        return agreementMapper.selectList(queryWrapper);
     }
 
     /**
@@ -162,7 +206,11 @@ public class WorkStudyAgreementServiceImpl
     /**
      * 生成协议模板内容
      */
-    private String generateTemplateContent(WorkStudyHire hire, WorkStudyPosition position, WorkStudyBatch batch) {
+    private String generateTemplateContent(
+            WorkStudyHire hire,
+            WorkStudyPosition position,
+            WorkStudyBatch batch,
+            String agreementNo) {
         return String.format("""
                 # 勤工助学协议书
 
@@ -186,7 +234,7 @@ public class WorkStudyAgreementServiceImpl
                 ---
                 生成时间：%s
                 """,
-                "GC" + LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE) + String.format("%06d", hire.getId()),
+                agreementNo,
                 hire.getStudentId(),
                 position.getPositionName(),
                 position.getDepartmentName(),

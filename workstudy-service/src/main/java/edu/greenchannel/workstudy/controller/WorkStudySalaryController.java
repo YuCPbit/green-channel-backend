@@ -86,13 +86,17 @@ public class WorkStudySalaryController {
     @GetMapping("/student")
     @RequirePermission("workstudy:salary:view")
     public ApiResponse<?> getStudentSalaries(@RequestAttribute(AuthInterceptor.CURRENT_USER_ATTRIBUTE) CurrentUser currentUser) {
-        // 学生只能看自己的薪酬
-        Long studentId = currentUser.id();
-        return ApiResponse.success(salaryService.lambdaQuery()
-                .eq(WorkStudySalary::getStudentId, studentId)
-                .eq(WorkStudySalary::getDeleted, 0)
-                .orderByDesc(WorkStudySalary::getSalaryYear)
-                .orderByDesc(WorkStudySalary::getSalaryMonth)
-                .list());
+        return ApiResponse.success(salaryService.listSalaries(currentUser.id(), null, null, null));
+    }
+
+    @GetMapping("/list")
+    @RequirePermission({"workstudy:salary:calculate", "workstudy:salary:dept-confirm",
+            "workstudy:salary:school-approve", "workstudy:salary:mark-paid"})
+    public ApiResponse<?> listSalaries(
+            @RequestParam(required = false) Long studentId,
+            @RequestParam(required = false) Integer status,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month) {
+        return ApiResponse.success(salaryService.listSalaries(studentId, status, year, month));
     }
 }

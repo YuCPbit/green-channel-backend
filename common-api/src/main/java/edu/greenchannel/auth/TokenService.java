@@ -23,18 +23,13 @@ import java.util.Optional;
 public class TokenService {
     public static final Duration TOKEN_TTL = Duration.ofHours(8);
     private static final String HMAC_ALGORITHM = "HmacSHA256";
-    private static final String DEFAULT_DEV_SECRET = "green-channel-dev-secret-change-before-deploy";
 
     private final byte[] secret;
 
-    public TokenService() {
-        this(System.getenv().getOrDefault("APP_AUTH_TOKEN_SECRET", DEFAULT_DEV_SECRET));
-    }
-
     @Autowired
-    public TokenService(@Value("${app.auth.token-secret:${APP_AUTH_TOKEN_SECRET:" + DEFAULT_DEV_SECRET + "}}") String secret) {
+    public TokenService(@Value("${app.auth.token-secret:${APP_AUTH_TOKEN_SECRET:}}") String secret) {
         if (secret == null || secret.length() < 32) {
-            throw new IllegalArgumentException("认证令牌密钥至少需要32个字符");
+            throw new IllegalArgumentException("必须通过 APP_AUTH_TOKEN_SECRET 配置至少32个字符的认证令牌密钥");
         }
         this.secret = secret.getBytes(StandardCharsets.UTF_8);
     }

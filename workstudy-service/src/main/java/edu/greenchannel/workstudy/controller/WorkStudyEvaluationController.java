@@ -42,7 +42,11 @@ public class WorkStudyEvaluationController {
     @RequirePermission("workstudy:evaluation:view")
     public ApiResponse<WorkStudyEvaluation> query(@RequestParam Long studentId,
                                                   @RequestParam int year,
-                                                  @RequestParam int month) {
+                                                  @RequestParam int month,
+                                                  @RequestAttribute(AuthInterceptor.CURRENT_USER_ATTRIBUTE) CurrentUser currentUser) {
+        if (currentUser.userType() == 1) {
+            studentId = currentUser.id();
+        }
         WorkStudyEvaluation eval = evaluationService.lambdaQuery()
                 .eq(WorkStudyEvaluation::getStudentId, studentId)
                 .eq(WorkStudyEvaluation::getEvalYear, year)
@@ -60,7 +64,7 @@ public class WorkStudyEvaluationController {
      * 分页查询评价列表
      */
     @GetMapping("/list")
-    @RequirePermission("school:workstudy:view")
+    @RequirePermission("workstudy:evaluation:submit")
     public ApiResponse<PageResult<WorkStudyEvaluationVO>> list(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -76,7 +80,7 @@ public class WorkStudyEvaluationController {
      * 查询评价详情（含学生姓名、岗位等信息）
      */
     @GetMapping("/detail")
-    @RequirePermission("school:workstudy:view")
+    @RequirePermission("workstudy:evaluation:submit")
     public ApiResponse<WorkStudyEvaluationVO> detail(@RequestParam Long id) {
         return ApiResponse.success(evaluationService.getDetail(id));
     }
@@ -85,7 +89,7 @@ public class WorkStudyEvaluationController {
      * 更新评价（仅允许修改评分和评语）
      */
     @PostMapping("/update")
-    @RequirePermission("school:workstudy:edit")
+    @RequirePermission("workstudy:evaluation:submit")
     public ApiResponse<String> update(@RequestBody Map<String, Object> body,
             @RequestAttribute(AuthInterceptor.CURRENT_USER_ATTRIBUTE) CurrentUser currentUser) {
         Long id = Long.valueOf(body.get("id").toString());
@@ -99,7 +103,7 @@ public class WorkStudyEvaluationController {
      * 删除评价（软删除）
      */
     @PostMapping("/delete")
-    @RequirePermission("school:workstudy:edit")
+    @RequirePermission("workstudy:evaluation:submit")
     public ApiResponse<String> delete(@RequestParam Long id) {
         evaluationService.deleteEvaluation(id);
         return ApiResponse.success("评价删除成功");
@@ -109,14 +113,15 @@ public class WorkStudyEvaluationController {
      * 学生查看本人评价
      */
     @GetMapping("/my")
-    @RequirePermission("school:workstudy:view")
+    @RequirePermission("workstudy:evaluation:view")
     public ApiResponse<PageResult<WorkStudyEvaluationVO>> myEvaluations(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) Long studentId,
             @RequestParam(required = false) Integer evalYear,
-            @RequestParam(required = false) Integer evalMonth) {
-        PageResult<WorkStudyEvaluationVO> result = evaluationService.getMyEvaluations(page, size, studentId, evalYear, evalMonth);
+            @RequestParam(required = false) Integer evalMonth,
+            @RequestAttribute(AuthInterceptor.CURRENT_USER_ATTRIBUTE) CurrentUser currentUser) {
+        PageResult<WorkStudyEvaluationVO> result = evaluationService.getMyEvaluations(
+                page, size, currentUser.id(), evalYear, evalMonth);
         return ApiResponse.success(result);
     }
 
@@ -124,7 +129,7 @@ public class WorkStudyEvaluationController {
      * 获取在岗录用列表（支持姓名/学号搜索）
      */
     @GetMapping("/hire/active")
-    @RequirePermission("school:workstudy:view")
+    @RequirePermission("workstudy:evaluation:submit")
     public ApiResponse<List<ActiveHireVO>> activeHires(@RequestParam(required = false) String keyword) {
         return ApiResponse.success(evaluationService.getActiveHires(keyword));
     }
@@ -134,7 +139,12 @@ public class WorkStudyEvaluationController {
      */
     @GetMapping("/history/{studentId}")
     @RequirePermission("workstudy:evaluation:view")
-    public ApiResponse<?> getHistory(@PathVariable Long studentId) {
+    public ApiResponse<?> getHistory(
+            @PathVariable Long studentId,
+            @RequestAttribute(AuthInterceptor.CURRENT_USER_ATTRIBUTE) CurrentUser currentUser) {
+        if (currentUser.userType() == 1) {
+            studentId = currentUser.id();
+        }
         return ApiResponse.success(evaluationService.lambdaQuery()
                 .eq(WorkStudyEvaluation::getStudentId, studentId)
                 .eq(WorkStudyEvaluation::getDeleted, 0)

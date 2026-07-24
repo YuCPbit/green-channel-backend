@@ -27,7 +27,8 @@ public class WorkStudyApplyController {
     public ApiResponse<Long> submitApply(@RequestBody WorkStudyApply applyInfo,
                                          @RequestAttribute(AuthInterceptor.CURRENT_USER_ATTRIBUTE) CurrentUser currentUser) {
         Long positionId = applyInfo.getPositionId();
-        Long studentId = Long.parseLong(currentUser.username()); // 假设username是学号
+        Long studentId = currentUser.id();
+        applyInfo.setStudentId(studentId);
         Long applyId = applyService.applyForPosition(positionId, studentId, applyInfo);
         return ApiResponse.success(applyId);
     }
@@ -39,7 +40,7 @@ public class WorkStudyApplyController {
     @RequirePermission("workstudy:apply:view")
     public ApiResponse<List<WorkStudyApply>> myApplications(
             @RequestAttribute(AuthInterceptor.CURRENT_USER_ATTRIBUTE) CurrentUser currentUser) {
-        Long studentId = Long.parseLong(currentUser.username());
+        Long studentId = currentUser.id();
         List<WorkStudyApply> applications = applyService.getStudentApplications(studentId);
         return ApiResponse.success(applications);
     }
@@ -81,11 +82,17 @@ public class WorkStudyApplyController {
      * 获取申请详情
      */
     @GetMapping("/{applyId}")
-    @RequirePermission("workstudy:apply:view")
-    public ApiResponse<WorkStudyApply> getApplyDetail(@PathVariable Long applyId) {
+    @RequirePermission({"workstudy:apply:view", "workstudy:apply:review"})
+    public ApiResponse<WorkStudyApply> getApplyDetail(
+            @PathVariable Long applyId,
+            @RequestAttribute(AuthInterceptor.CURRENT_USER_ATTRIBUTE) CurrentUser currentUser) {
         WorkStudyApply apply = applyService.getById(applyId);
         if (apply == null || apply.getDeleted() == 1) {
             throw new BusinessException(40400, "申请记录不存在");
+        }
+        if (currentUser.userType() == 1
+                && !java.util.Objects.equals(currentUser.id(), apply.getStudentId())) {
+            throw new BusinessException(40300, "无权查看该申请");
         }
         return ApiResponse.success(apply);
     }

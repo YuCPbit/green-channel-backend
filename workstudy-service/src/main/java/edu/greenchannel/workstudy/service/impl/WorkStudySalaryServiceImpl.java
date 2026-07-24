@@ -186,6 +186,20 @@ public class WorkStudySalaryServiceImpl
         log.info("薪酬已发放：salaryId={}", salaryId);
     }
 
+    @Override
+    public List<WorkStudySalary> listSalaries(Long studentId, Integer status, Integer year, Integer month) {
+        return lambdaQuery()
+                .eq(studentId != null, WorkStudySalary::getStudentId, studentId)
+                .eq(status != null, WorkStudySalary::getStatus, status)
+                .eq(year != null, WorkStudySalary::getSalaryYear, year)
+                .eq(month != null, WorkStudySalary::getSalaryMonth, month)
+                .eq(WorkStudySalary::getDeleted, 0)
+                .orderByDesc(WorkStudySalary::getSalaryYear)
+                .orderByDesc(WorkStudySalary::getSalaryMonth)
+                .orderByDesc(WorkStudySalary::getCreateTime)
+                .list();
+    }
+
     // ==================== 私有方法 ====================
 
     /**

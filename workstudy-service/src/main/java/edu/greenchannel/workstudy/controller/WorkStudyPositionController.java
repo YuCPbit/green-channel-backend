@@ -61,7 +61,11 @@ public class WorkStudyPositionController {
     @RequirePermission("workstudy:position:view")
     public ApiResponse<List<WorkStudyPosition>> listPositions(
             @RequestParam(required = false) Long batchId,
-            @RequestParam(required = false) Integer status) {
+            @RequestParam(required = false) Integer status,
+            @RequestAttribute(AuthInterceptor.CURRENT_USER_ATTRIBUTE) CurrentUser currentUser) {
+        if (currentUser.userType() == 1) {
+            status = 2;
+        }
         List<WorkStudyPosition> positions = positionService.listValidPositions(batchId, status);
         return ApiResponse.success(positions);
     }
@@ -95,10 +99,15 @@ public class WorkStudyPositionController {
      */
     @GetMapping("/{positionId}")
     @RequirePermission("workstudy:position:view")
-    public ApiResponse<WorkStudyPosition> getPositionDetail(@PathVariable Long positionId) {
+    public ApiResponse<WorkStudyPosition> getPositionDetail(
+            @PathVariable Long positionId,
+            @RequestAttribute(AuthInterceptor.CURRENT_USER_ATTRIBUTE) CurrentUser currentUser) {
         WorkStudyPosition position = positionService.getById(positionId);
         if (position == null || position.getDeleted() == 1) {
             throw new BusinessException(40400, "岗位不存在");
+        }
+        if (currentUser.userType() == 1 && position.getStatus() != 2) {
+            throw new BusinessException(40400, "岗位不存在或未开放");
         }
         return ApiResponse.success(position);
     }

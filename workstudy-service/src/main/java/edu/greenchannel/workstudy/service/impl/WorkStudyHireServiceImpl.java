@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -177,5 +178,15 @@ public class WorkStudyHireServiceImpl
             position.setStatus(WorkStudyStatus.POSITION_ONLINE.getCode());
             positionMapper.updateById(position);
         }
+    }
+
+    @Override
+    public List<WorkStudyHire> listHires(Long studentId, Integer hireStatus) {
+        return lambdaQuery()
+                .eq(studentId != null, WorkStudyHire::getStudentId, studentId)
+                .eq(hireStatus != null, WorkStudyHire::getHireStatus, hireStatus)
+                .eq(WorkStudyHire::getDeleted, 0)
+                .orderByDesc(WorkStudyHire::getCreateTime)
+                .list();
     }
 }

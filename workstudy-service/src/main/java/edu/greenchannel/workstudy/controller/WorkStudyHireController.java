@@ -38,4 +38,20 @@ public class WorkStudyHireController {
         hireService.leavePosition(hireId, leaveType, reason, currentUser.id());
         return ApiResponse.success();
     }
+
+    @GetMapping("/my")
+    @RequirePermission("workstudy:hire:view")
+    public ApiResponse<?> myHires(
+            @RequestParam(required = false) Integer hireStatus,
+            @RequestAttribute(AuthInterceptor.CURRENT_USER_ATTRIBUTE) CurrentUser currentUser) {
+        return ApiResponse.success(hireService.listHires(currentUser.id(), hireStatus));
+    }
+
+    @GetMapping("/list")
+    @RequirePermission({"workstudy:hire:approve", "workstudy:hire:leave"})
+    public ApiResponse<?> listHires(
+            @RequestParam(required = false) Long studentId,
+            @RequestParam(required = false) Integer hireStatus) {
+        return ApiResponse.success(hireService.listHires(studentId, hireStatus));
+    }
 }

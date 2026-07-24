@@ -4,12 +4,12 @@ import edu.greenchannel.auth.AuthInterceptor;
 import edu.greenchannel.auth.CurrentUser;
 import edu.greenchannel.auth.RequirePermission;
 import edu.greenchannel.common.ApiResponse;
-import edu.greenchannel.common.BusinessException;
 import edu.greenchannel.workstudy.entity.WorkStudyAgreement;
 import edu.greenchannel.workstudy.service.WorkStudyAgreementService;
-import edu.greenchannel.workstudy.service.impl.WorkStudyAgreementServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/workstudy/agreement")
@@ -35,8 +35,9 @@ public class WorkStudyAgreementController {
     @PostMapping("/{agreementId}/renew")
     @RequirePermission("workstudy:agreement:renew")
     public ApiResponse<String> renew(@PathVariable Long agreementId,
+                                     @RequestParam(required = false) LocalDate newEndDate,
                                      @RequestAttribute(AuthInterceptor.CURRENT_USER_ATTRIBUTE) CurrentUser currentUser) {
-        ((WorkStudyAgreementServiceImpl) agreementService).renewAgreement(agreementId, currentUser.id());
+        agreementService.renewAgreement(agreementId, currentUser.id(), newEndDate);
         return ApiResponse.success("续签成功");
     }
 
@@ -44,13 +45,12 @@ public class WorkStudyAgreementController {
      * 查询协议详情
      */
     @GetMapping("/{agreementId}")
-    @RequirePermission("workstudy:agreement:view")
-    public ApiResponse<WorkStudyAgreement> getAgreement(@PathVariable Long agreementId) {
-        WorkStudyAgreement agreement = agreementService.getById(agreementId);
-        if (agreement == null || agreement.getDeleted() == 1) {
-            throw new BusinessException(40400, "协议不存在");
-        }
-        return ApiResponse.success(agreement);
+    @RequirePermission({"workstudy:agreement:view", "workstudy:agreement:renew"})
+    public ApiResponse<WorkStudyAgreement> getAgreement(
+            @PathVariable Long agreementId,
+            @RequestAttribute(AuthInterceptor.CURRENT_USER_ATTRIBUTE) CurrentUser currentUser) {
+        return ApiResponse.success(agreementService.getAccessibleAgreement(
+                agreementId, currentUser.id(), currentUser.userType()));
     }
 
     /**
@@ -59,11 +59,17 @@ public class WorkStudyAgreementController {
     @GetMapping("/student")
     @RequirePermission("workstudy:agreement:view")
     public ApiResponse<?> getStudentAgreements(@RequestAttribute(AuthInterceptor.CURRENT_USER_ATTRIBUTE) CurrentUser currentUser) {
-        Long studentId = currentUser.id();
-        return ApiResponse.success(agreementService.lambdaQuery()
-                .eq(WorkStudyAgreement::getStudentId, studentId)
-                .eq(WorkStudyAgreement::getDeleted, 0)
-                .orderByDesc(WorkStudyAgreement::getCreateTime)
-                .list());
+        return ApiResponse.success(agreementService.listAgreements(currentUser.id(), null));
+    }
+
+    /**
+     * 管理端查询协议列表，供到期检查与续签使用。
+     */
+    @GetMapping("/list")
+    @RequirePermission("workstudy:agreement:renew")
+    public ApiResponse<?> listAgreements(
+            @RequestParam(required = false) Long studentId,
+            @RequestParam(required = false) Integer signStatus) {
+        return ApiResponse.success(agreementService.listAgreements(studentId, signStatus));
     }
 }

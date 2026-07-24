@@ -27,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -200,70 +201,100 @@ public class GiftReviewServiceImpl extends ServiceImpl<ReviewRecordMapper, Revie
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void pickup(GiftPickupDTO dto) {
-        LambdaQueryWrapper<StudentApply> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(StudentApply::getPickupCode, dto.getPickupCode())
-                .eq(StudentApply::getIsDeleted, 0);
-        StudentApply apply = studentApplyMapper.selectOne(queryWrapper);
-        if (apply == null) {
-            throw new BusinessException(500, "领取码无效，未找到对应申请");
-        }
-        if (!apply.getStatus().equals(5)) {
-            throw new BusinessException(500, "申请未终审通过，无法领取");
-        }
-        if (!apply.getPickupStatus().equals(0)) {
-            throw new BusinessException(500, "该礼包已领取或已登记异常，无法重复领取");
-        }
+        StudentApply apply = findPickupApplication(dto.getPickupCode());
+        validateApprovedAndPending(apply);
 
         LambdaUpdateWrapper<StudentApply> updateWrapper = new LambdaUpdateWrapper<>();
         updateWrapper.eq(StudentApply::getId, apply.getId())
+                .eq(StudentApply::getPickupStatus, 0)
+                .eq(StudentApply::getIsDeleted, 0)
                 .set(StudentApply::getPickupStatus, 1)
                 .set(StudentApply::getPickupTime, LocalDateTime.now())
                 .set(StudentApply::getPickupOperatorId, dto.getOperatorId())
+                .set(StudentApply::getPickupRemark, normalizeRemark(dto.getRemark()))
                 .set(StudentApply::getUpdateTime, LocalDateTime.now());
-        studentApplyMapper.update(null, updateWrapper);
+        ensureStateChanged(studentApplyMapper.update(null, updateWrapper), "该礼包已被其他工作人员核销，请勿重复操作");
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void pickupException(GiftPickupDTO dto) {
-        LambdaQueryWrapper<StudentApply> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(StudentApply::getPickupCode, dto.getPickupCode())
-                .eq(StudentApply::getIsDeleted, 0);
-        StudentApply apply = studentApplyMapper.selectOne(queryWrapper);
-        if (apply == null) {
-            throw new BusinessException(500, "领取码无效，未找到对应申请");
+        StudentApply apply = findPickupApplication(dto.getPickupCode());
+        validateApprovedAndPending(apply);
+        String remark = normalizeRemark(dto.getRemark());
+        if (remark == null) {
+            throw new BusinessException(40000, "异常登记必须填写备注");
         }
 
         LambdaUpdateWrapper<StudentApply> updateWrapper = new LambdaUpdateWrapper<>();
         updateWrapper.eq(StudentApply::getId, apply.getId())
+                .eq(StudentApply::getPickupStatus, 0)
+                .eq(StudentApply::getIsDeleted, 0)
                 .set(StudentApply::getPickupStatus, 2)
-                .set(StudentApply::getPickupRemark, dto.getRemark())
+                .set(StudentApply::getPickupRemark, remark)
                 .set(StudentApply::getPickupOperatorId, dto.getOperatorId())
                 .set(StudentApply::getUpdateTime, LocalDateTime.now());
-        studentApplyMapper.update(null, updateWrapper);
+        ensureStateChanged(studentApplyMapper.update(null, updateWrapper), "该礼包状态已发生变化，请刷新后重试");
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void pickupReissue(GiftPickupDTO dto) {
-        LambdaQueryWrapper<StudentApply> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(StudentApply::getPickupCode, dto.getPickupCode())
-                .eq(StudentApply::getIsDeleted, 0);
-        StudentApply apply = studentApplyMapper.selectOne(queryWrapper);
-        if (apply == null) {
-            throw new BusinessException(500, "领取码无效，未找到对应申请");
+        StudentApply apply = findPickupApplication(dto.getPickupCode());
+        if (!Objects.equals(apply.getStatus(), 5)) {
+            throw new BusinessException(40900, "申请未终审通过，无法补发");
         }
-        if (!apply.getPickupStatus().equals(2)) {
-            throw new BusinessException(500, "仅异常状态可执行补发操作");
+        if (!Objects.equals(apply.getPickupStatus(), 2)) {
+            throw new BusinessException(40900, "仅异常待处理状态可执行补发操作");
         }
 
         LambdaUpdateWrapper<StudentApply> updateWrapper = new LambdaUpdateWrapper<>();
         updateWrapper.eq(StudentApply::getId, apply.getId())
+                .eq(StudentApply::getPickupStatus, 2)
+                .eq(StudentApply::getIsDeleted, 0)
                 .set(StudentApply::getPickupStatus, 3)
                 .set(StudentApply::getPickupTime, LocalDateTime.now())
                 .set(StudentApply::getPickupOperatorId, dto.getOperatorId())
+                .set(StudentApply::getPickupRemark, normalizeRemark(dto.getRemark()))
                 .set(StudentApply::getUpdateTime, LocalDateTime.now());
-        studentApplyMapper.update(null, updateWrapper);
+        ensureStateChanged(studentApplyMapper.update(null, updateWrapper), "该礼包状态已发生变化，请刷新后重试");
+    }
+
+    private StudentApply findPickupApplication(String pickupCode) {
+        String normalizedCode = pickupCode == null ? null : pickupCode.trim();
+        if (normalizedCode == null || normalizedCode.isEmpty()) {
+            throw new BusinessException(40000, "领取码不能为空");
+        }
+        LambdaQueryWrapper<StudentApply> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(StudentApply::getPickupCode, normalizedCode)
+                .eq(StudentApply::getIsDeleted, 0);
+        StudentApply apply = studentApplyMapper.selectOne(queryWrapper);
+        if (apply == null) {
+            throw new BusinessException(40400, "领取码无效，未找到对应申请");
+        }
+        return apply;
+    }
+
+    private void validateApprovedAndPending(StudentApply apply) {
+        if (!Objects.equals(apply.getStatus(), 5)) {
+            throw new BusinessException(40900, "申请未终审通过，无法领取");
+        }
+        if (!Objects.equals(apply.getPickupStatus(), 0)) {
+            throw new BusinessException(40900, "该礼包已领取或已登记异常，无法重复操作");
+        }
+    }
+
+    private void ensureStateChanged(int updateCount, String message) {
+        if (updateCount != 1) {
+            throw new BusinessException(40900, message);
+        }
+    }
+
+    private String normalizeRemark(String remark) {
+        if (remark == null || remark.isBlank()) {
+            return null;
+        }
+        return remark.trim();
     }
 
     @Override

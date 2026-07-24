@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.spring.service.IService;
 import edu.greenchannel.workstudy.entity.WorkStudySalary;
 import java.math.BigDecimal;
 import java.time.YearMonth;
+import java.util.List;
 
 public interface WorkStudySalaryService extends IService<WorkStudySalary> {
 
@@ -26,4 +27,6 @@ public interface WorkStudySalaryService extends IService<WorkStudySalary> {
      * 标记薪酬已发放
      */
     void markAsPaid(Long salaryId, Long operatorId);
+
+    List<WorkStudySalary> listSalaries(Long studentId, Integer status, Integer year, Integer month);
 }

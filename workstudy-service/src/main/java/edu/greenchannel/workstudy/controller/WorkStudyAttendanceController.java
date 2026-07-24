@@ -69,4 +69,22 @@ public class WorkStudyAttendanceController {
         attendanceService.confirmAttendance(attendanceId, currentUser.id());
         return ApiResponse.success();
     }
+
+    @GetMapping("/my")
+    @RequirePermission("workstudy:attendance:view")
+    public ApiResponse<?> myAttendance(
+            @RequestParam(required = false) Long hireId,
+            @RequestParam(required = false) Integer status,
+            @RequestAttribute(AuthInterceptor.CURRENT_USER_ATTRIBUTE) CurrentUser currentUser) {
+        return ApiResponse.success(attendanceService.listRecords(currentUser.id(), hireId, status));
+    }
+
+    @GetMapping("/list")
+    @RequirePermission("workstudy:attendance:confirm")
+    public ApiResponse<?> listAttendance(
+            @RequestParam(required = false) Long studentId,
+            @RequestParam(required = false) Long hireId,
+            @RequestParam(required = false) Integer status) {
+        return ApiResponse.success(attendanceService.listRecords(studentId, hireId, status));
+    }
 }

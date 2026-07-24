@@ -29,7 +29,8 @@ green-channel-backend/
 ## 构建与启动
 
 1. 新库执行 `docs/03-数据库/数据库设计.sql` 和 `docs/03-数据库/数据库初始化数据.sql`；
-   已有开发库再执行 `docs/03-数据库/迁移-2026-07-24-A接管功能.sql`。
+   已有开发库依次执行 `docs/03-数据库/迁移-2026-07-24-A接管功能.sql` 和
+   `docs/03-数据库/迁移-2026-07-24-勤工助学权限与联调.sql`。
 2. 在根目录验证所有模块：
 
    ```bash
@@ -39,12 +40,16 @@ green-channel-backend/
 3. 启动各服务（分别在独立终端执行）：
 
    ```bash
-   DB_USERNAME=root DB_PASSWORD=你的密码 mvn -pl platform-service -am spring-boot:run
-   DB_USERNAME=root DB_PASSWORD=你的密码 mvn -pl gift-service -am spring-boot:run
-   DB_USERNAME=root DB_PASSWORD=你的密码 mvn -pl subsidy-service -am spring-boot:run
-   DB_USERNAME=root DB_PASSWORD=你的密码 mvn -pl workstudy-service -am spring-boot:run
-   DB_USERNAME=root DB_PASSWORD=你的密码 mvn -pl dashboard-service -am spring-boot:run
-   DB_USERNAME=root DB_PASSWORD=你的密码 mvn -pl tutor-affair-service -am spring-boot:run
+   export DB_USERNAME=root
+   export DB_PASSWORD=你的本机数据库密码
+   export APP_AUTH_TOKEN_SECRET=至少32字符且所有服务完全相同的随机密钥
+
+   mvn -pl platform-service -am spring-boot:run
+   mvn -pl gift-service -am spring-boot:run
+   mvn -pl subsidy-service -am spring-boot:run
+   mvn -pl workstudy-service -am spring-boot:run
+   mvn -pl dashboard-service -am spring-boot:run
+   mvn -pl tutor-affair-service -am spring-boot:run
    mvn -pl gateway-service spring-boot:run
    ```
 
@@ -55,3 +60,4 @@ green-channel-backend/
 
 文档入口统一从 `docs/README.md` 进入。开发协作、服务接口、数据库、实施记录及历史归档均已分目录；
 不要再通过旧文件名猜测哪个版本有效。禁止提交真实学生数据、数据库密码或个人凭据。
+后端不再提供通用 Token 密钥回退值；未设置 `APP_AUTH_TOKEN_SECRET` 时服务会拒绝启动。
