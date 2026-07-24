@@ -1,6 +1,5 @@
 package edu.greenchannel.workstudy.service;
 
-import edu.greenchannel.message.MessagePublisher;
 import edu.greenchannel.workstudy.entity.WorkStudyAgreement;
 import edu.greenchannel.workstudy.entity.WorkStudyBatch;
 import edu.greenchannel.workstudy.entity.WorkStudyHire;
@@ -33,9 +32,6 @@ class WorkStudyAgreementServiceImplTest {
 
     @Mock
     private WorkStudyBatchMapper batchMapper;
-
-    @Mock
-    private MessagePublisher messagePublisher;
 
     @InjectMocks
     private WorkStudyAgreementServiceImpl service;
