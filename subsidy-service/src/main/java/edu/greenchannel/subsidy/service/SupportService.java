@@ -5,6 +5,7 @@ import edu.greenchannel.common.BusinessException;
 import edu.greenchannel.subsidy.controller.SupportController.AidPlanRequest;
 import edu.greenchannel.subsidy.controller.SupportController.AppealCreateRequest;
 import edu.greenchannel.subsidy.controller.SupportController.AppealHandleRequest;
+import edu.greenchannel.subsidy.controller.SupportController.AppealSupplementRequest;
 import edu.greenchannel.subsidy.controller.SupportController.SurveyCreateRequest;
 import edu.greenchannel.subsidy.controller.SupportController.SurveyResponseRequest;
 import java.sql.Timestamp;
@@ -152,18 +153,7 @@ public class SupportService {
         } catch (DuplicateKeyException exception) {
             throw new BusinessException(40900, "该申请已提交过申诉");
         }
-        if (request.attachmentIds() != null && !request.attachmentIds().isEmpty()) {
-            for (Long attachmentId : request.attachmentIds()) {
-                int changed = jdbc.update("""
-                        UPDATE gc_attachment
-                           SET business_type='APPEAL', business_id=?, update_time=NOW()
-                         WHERE id=? AND owner_id=? AND status='READY' AND is_deleted=0
-                        """, appealId, attachmentId, user.id());
-                if (changed == 0) {
-                    throw new BusinessException(40000, "附件不存在或不属于当前用户");
-                }
-            }
-        }
+        bindAppealAttachments(appealId, request.attachmentIds(), user.id());
         return appealId;
     }
 
@@ -176,6 +166,23 @@ public class SupportService {
                  WHERE student_id=? AND is_deleted=0
                  ORDER BY submit_time DESC
                 """, studentId);
+    }
+
+    @Transactional
+    public void resubmitAppeal(long id, AppealSupplementRequest request, CurrentUser user) {
+        long studentId = currentStudentId(user.id());
+        int changed = jdbc.update("""
+                UPDATE gc_appeal
+                   SET reason=?, attachment_ids=?, status=1, conclusion=NULL,
+                       handler_id=NULL, handle_time=NULL, update_time=NOW()
+                 WHERE id=? AND student_id=? AND status=5 AND is_deleted=0
+                """, request.reason().trim(),
+                attachmentIdsJson(request.attachmentIds() == null ? List.of() : request.attachmentIds()),
+                id, studentId);
+        if (changed == 0) {
+            throw new BusinessException(40900, "只有本人被退回补充的申诉可以重新提交");
+        }
+        bindAppealAttachments(id, request.attachmentIds(), user.id());
     }
 
     public List<Map<String, Object>> pendingAppeals(CurrentUser user) {
@@ -219,9 +226,13 @@ public class SupportService {
         if (request.startDate().isAfter(request.endDate())) {
             throw new BusinessException(40000, "问卷开始日期不能晚于结束日期");
         }
+        String targetType = request.targetType().toUpperCase(Locale.ROOT);
+        if (!List.of("ALL", "GIFT", "SUBSIDY").contains(targetType)) {
+            throw new BusinessException(40000, "问卷目标业务仅支持 ALL、GIFT 或 SUBSIDY");
+        }
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("title", request.title().trim());
-        values.put("target_type", request.targetType().toUpperCase(Locale.ROOT));
+        values.put("target_type", targetType);
         values.put("target_batch_id", request.targetBatchId());
         values.put("start_date", request.startDate());
         values.put("end_date", request.endDate());
@@ -248,6 +259,7 @@ public class SupportService {
 
     public List<Map<String, Object>> listSurveys(CurrentUser user) {
         if (user.userType() == 1) {
+            long studentId = currentStudentId(user.id());
             return jdbc.queryForList("""
                     SELECT q.id, q.title, q.target_type, q.target_batch_id, q.start_date, q.end_date,
                            q.status, r.score AS submitted_score, r.suggestion AS submitted_suggestion
@@ -256,8 +268,21 @@ public class SupportService {
                         ON r.survey_id=q.id AND r.student_id=? AND r.is_deleted=0
                      WHERE q.status=1 AND q.start_date<=CURRENT_DATE AND q.end_date>=CURRENT_DATE
                        AND q.is_deleted=0
+                       AND (
+                         (q.target_type IN ('ALL','SUBSIDY') AND EXISTS (
+                           SELECT 1 FROM gc_subsidy_apply sa
+                            WHERE sa.student_id=? AND sa.status=4 AND sa.is_deleted=0
+                              AND (q.target_batch_id IS NULL OR sa.batch_id=q.target_batch_id)
+                         ))
+                         OR
+                         (q.target_type IN ('ALL','GIFT') AND EXISTS (
+                           SELECT 1 FROM gc_gift_pack_apply ga
+                            WHERE ga.student_id=? AND ga.status=5 AND ga.is_deleted=0
+                              AND (q.target_batch_id IS NULL OR ga.pack_batch_id=q.target_batch_id)
+                         ))
+                       )
                      ORDER BY q.create_time DESC
-                    """, currentStudentId(user.id()));
+                    """, studentId, studentId, studentId);
         }
         return jdbc.queryForList("""
                 SELECT id, title, target_type, target_batch_id, start_date, end_date,
@@ -269,11 +294,26 @@ public class SupportService {
 
     @Transactional
     public void submitSurvey(long surveyId, SurveyResponseRequest request, long userId) {
+        long studentId = currentStudentId(userId);
         Integer available = jdbc.queryForObject("""
-                SELECT COUNT(*) FROM gc_satisfaction_survey
-                 WHERE id=? AND status=1 AND start_date<=CURRENT_DATE AND end_date>=CURRENT_DATE
-                   AND is_deleted=0
-                """, Integer.class, surveyId);
+                SELECT COUNT(*) FROM gc_satisfaction_survey q
+                 WHERE q.id=? AND q.status=1
+                   AND q.start_date<=CURRENT_DATE AND q.end_date>=CURRENT_DATE
+                   AND q.is_deleted=0
+                   AND (
+                     (q.target_type IN ('ALL','SUBSIDY') AND EXISTS (
+                       SELECT 1 FROM gc_subsidy_apply sa
+                        WHERE sa.student_id=? AND sa.status=4 AND sa.is_deleted=0
+                          AND (q.target_batch_id IS NULL OR sa.batch_id=q.target_batch_id)
+                     ))
+                     OR
+                     (q.target_type IN ('ALL','GIFT') AND EXISTS (
+                       SELECT 1 FROM gc_gift_pack_apply ga
+                        WHERE ga.student_id=? AND ga.status=5 AND ga.is_deleted=0
+                          AND (q.target_batch_id IS NULL OR ga.pack_batch_id=q.target_batch_id)
+                     ))
+                   )
+                """, Integer.class, surveyId, studentId, studentId);
         if (available == null || available == 0) {
             throw new BusinessException(40900, "问卷未发布或不在填写时间内");
         }
@@ -282,7 +322,7 @@ public class SupportService {
                     INSERT INTO gc_satisfaction_response
                            (survey_id, student_id, score, suggestion, is_deleted)
                     VALUES (?, ?, ?, ?, 0)
-                    """, surveyId, currentStudentId(userId), request.score(), blankToNull(request.suggestion()));
+                    """, surveyId, studentId, request.score(), blankToNull(request.suggestion()));
         } catch (DuplicateKeyException exception) {
             throw new BusinessException(40900, "该问卷已经提交，不能重复填写");
         }
@@ -409,7 +449,11 @@ public class SupportService {
         LocalDateTime rejectedAt = time instanceof Timestamp timestamp
                 ? timestamp.toLocalDateTime()
                 : LocalDateTime.parse(String.valueOf(time).replace(' ', 'T'));
-        return new SourceRejection(sourceType, ((Number) row.get("reviewer_role")).intValue(), rejectedAt);
+        int targetRole = ((Number) row.get("reviewer_role")).intValue();
+        if ("GIFT".equals(sourceType) && targetRole >= 2 && targetRole <= 4) {
+            targetRole -= 1;
+        }
+        return new SourceRejection(sourceType, targetRole, rejectedAt);
     }
 
     private int appealWindowDays() {
@@ -440,6 +484,22 @@ public class SupportService {
         return "[" + attachmentIds.stream()
                 .map(String::valueOf)
                 .collect(java.util.stream.Collectors.joining(",")) + "]";
+    }
+
+    private void bindAppealAttachments(long appealId, List<Long> attachmentIds, long userId) {
+        if (attachmentIds == null || attachmentIds.isEmpty()) {
+            return;
+        }
+        for (Long attachmentId : attachmentIds) {
+            int changed = jdbc.update("""
+                    UPDATE gc_attachment
+                       SET business_type='APPEAL', business_id=?, update_time=NOW()
+                     WHERE id=? AND owner_id=? AND status='READY' AND is_deleted=0
+                    """, appealId, attachmentId, userId);
+            if (changed == 0) {
+                throw new BusinessException(40000, "附件不存在或不属于当前用户");
+            }
+        }
     }
 
     private String blankToNull(String value) {

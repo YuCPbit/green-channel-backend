@@ -85,6 +85,16 @@ public class SupportController {
         return ApiResponse.success(supportService.myAppeals(user.id()));
     }
 
+    @PutMapping("/appeals/{id}")
+    @RequirePermission("student:subsidy:view")
+    public ApiResponse<Void> resubmitAppeal(
+            @PathVariable long id,
+            @Valid @RequestBody AppealSupplementRequest request,
+            @RequestAttribute(AuthInterceptor.CURRENT_USER_ATTRIBUTE) CurrentUser user) {
+        supportService.resubmitAppeal(id, request, user);
+        return ApiResponse.success();
+    }
+
     @GetMapping("/appeals/pending")
     @RequirePermission({"tutor:review:view", "college:review:view", "school:review:view"})
     public ApiResponse<List<Map<String, Object>>> pendingAppeals(
@@ -161,6 +171,9 @@ public class SupportController {
     }
 
     public record AppealHandleRequest(@NotBlank String action, @NotBlank String conclusion) {
+    }
+
+    public record AppealSupplementRequest(@NotBlank String reason, List<Long> attachmentIds) {
     }
 
     public record SurveyCreateRequest(

@@ -158,7 +158,8 @@ public class WorkStudyMovementService {
             long targetPositionId = targetValue.longValue();
             int occupied = jdbc.update("""
                     UPDATE gc_work_study_position
-                       SET hired_count=hired_count+1, update_time=NOW()
+                       SET status=CASE WHEN hired_count+1>=recruit_count THEN 3 ELSE status END,
+                           hired_count=hired_count+1, update_time=NOW()
                      WHERE id=? AND status=2 AND hired_count<recruit_count AND is_deleted=0
                     """, targetPositionId);
             if (occupied == 0) {
@@ -202,8 +203,8 @@ public class WorkStudyMovementService {
     private void releasePosition(long positionId) {
         jdbc.update("""
                 UPDATE gc_work_study_position
-                   SET hired_count=GREATEST(hired_count-1,0),
-                       status=CASE WHEN status=3 AND hired_count-1<recruit_count THEN 2 ELSE status END,
+                   SET status=CASE WHEN status=3 AND hired_count-1<recruit_count THEN 2 ELSE status END,
+                       hired_count=GREATEST(hired_count-1,0),
                        update_time=NOW()
                  WHERE id=? AND is_deleted=0
                 """, positionId);
