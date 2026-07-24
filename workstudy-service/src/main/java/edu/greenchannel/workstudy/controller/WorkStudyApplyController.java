@@ -9,7 +9,7 @@ import edu.greenchannel.workstudy.service.WorkStudyApplyService;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/apply")
+@RequestMapping("/apply")
 public class WorkStudyApplyController {
 
     private final WorkStudyApplyService applyService;
