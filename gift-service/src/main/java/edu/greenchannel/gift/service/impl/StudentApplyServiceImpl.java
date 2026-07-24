@@ -1,7 +1,7 @@
 package edu.greenchannel.gift.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import edu.greenchannel.common.BusinessException;
 import edu.greenchannel.gift.dto.review.StudentApplyUpdateDTO;
 import edu.greenchannel.gift.entity.StudentApply;

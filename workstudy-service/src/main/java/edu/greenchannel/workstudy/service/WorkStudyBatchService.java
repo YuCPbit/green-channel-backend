@@ -1,6 +1,6 @@
 package edu.greenchannel.workstudy.service;
 
-import com.baomidou.mybatisplus.extension.service.IService;
+import com.baomidou.mybatisplus.spring.service.IService;
 import edu.greenchannel.workstudy.entity.WorkStudyBatch;
 
 public interface WorkStudyBatchService extends IService<WorkStudyBatch> {

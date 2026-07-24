@@ -1,7 +1,7 @@
 package edu.greenchannel.gift.service.review;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.baomidou.mybatisplus.extension.service.IService;
+import com.baomidou.mybatisplus.spring.service.IService;
 import edu.greenchannel.gift.dto.review.BatchSubmitDTO;
 import edu.greenchannel.gift.dto.review.GiftPickupDTO;
 import edu.greenchannel.gift.dto.review.GiftReviewOperateDTO;

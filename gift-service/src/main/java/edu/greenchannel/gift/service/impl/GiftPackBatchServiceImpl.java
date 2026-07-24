@@ -1,6 +1,6 @@
 package edu.greenchannel.gift.service.impl;
 
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import edu.greenchannel.gift.entity.GiftPackBatch;
 import edu.greenchannel.gift.mapper.GiftPackBatchMapper;
 import edu.greenchannel.gift.service.GiftPackBatchService;

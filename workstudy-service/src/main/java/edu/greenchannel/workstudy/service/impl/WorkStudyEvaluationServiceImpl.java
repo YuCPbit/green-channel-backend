@@ -1,6 +1,6 @@
 package edu.greenchannel.workstudy.service.impl;
 
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import edu.greenchannel.workstudy.entity.WorkStudyEvaluation;
 import edu.greenchannel.workstudy.mapper.WorkStudyEvaluationMapper;
 import edu.greenchannel.workstudy.service.NotificationService;
