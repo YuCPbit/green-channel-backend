@@ -17,11 +17,11 @@ public class AuthWebConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(authInterceptor)
-                .addPathPatterns("/api/**")
+                .addPathPatterns("/**")
                 .excludePathPatterns("/api/health", "/api/auth/login", "/api/external/**")
                 .order(2);
         registry.addInterceptor(permissionInterceptor)
-                .addPathPatterns("/api/**")
+                .addPathPatterns("/**")
                 .excludePathPatterns("/api/auth/login", "/api/external/**")
                 .order(3);
     }
