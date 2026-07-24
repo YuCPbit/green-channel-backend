@@ -3,6 +3,7 @@ package edu.greenchannel.gift.controller;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import edu.greenchannel.common.ApiResponse;
+import edu.greenchannel.auth.RequirePermission;
 import edu.greenchannel.gift.entity.GiftPackQuota;
 import edu.greenchannel.gift.service.GiftPackQuotaService;
 import org.springframework.web.bind.annotation.*;
@@ -12,6 +13,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/gift/quota")
+@RequirePermission("gift:quota:manage")
 public class GiftPackQuotaController {
 
     private final GiftPackQuotaService quotaService;

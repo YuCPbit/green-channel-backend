@@ -201,6 +201,7 @@ public class GiftReviewServiceImpl extends ServiceImpl<ReviewRecordMapper, Revie
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void pickup(GiftPickupDTO dto) {
+        Long operatorId = getCurrentUserId();
         StudentApply apply = findPickupApplication(dto.getPickupCode());
         validateApprovedAndPending(apply);
 
@@ -210,7 +211,7 @@ public class GiftReviewServiceImpl extends ServiceImpl<ReviewRecordMapper, Revie
                 .eq(StudentApply::getIsDeleted, 0)
                 .set(StudentApply::getPickupStatus, 1)
                 .set(StudentApply::getPickupTime, LocalDateTime.now())
-                .set(StudentApply::getPickupOperatorId, dto.getOperatorId())
+                .set(StudentApply::getPickupOperatorId, operatorId)
                 .set(StudentApply::getPickupRemark, normalizeRemark(dto.getRemark()))
                 .set(StudentApply::getUpdateTime, LocalDateTime.now());
         ensureStateChanged(studentApplyMapper.update(null, updateWrapper), "该礼包已被其他工作人员核销，请勿重复操作");
@@ -219,6 +220,7 @@ public class GiftReviewServiceImpl extends ServiceImpl<ReviewRecordMapper, Revie
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void pickupException(GiftPickupDTO dto) {
+        Long operatorId = getCurrentUserId();
         StudentApply apply = findPickupApplication(dto.getPickupCode());
         validateApprovedAndPending(apply);
         String remark = normalizeRemark(dto.getRemark());
@@ -232,7 +234,7 @@ public class GiftReviewServiceImpl extends ServiceImpl<ReviewRecordMapper, Revie
                 .eq(StudentApply::getIsDeleted, 0)
                 .set(StudentApply::getPickupStatus, 2)
                 .set(StudentApply::getPickupRemark, remark)
-                .set(StudentApply::getPickupOperatorId, dto.getOperatorId())
+                .set(StudentApply::getPickupOperatorId, operatorId)
                 .set(StudentApply::getUpdateTime, LocalDateTime.now());
         ensureStateChanged(studentApplyMapper.update(null, updateWrapper), "该礼包状态已发生变化，请刷新后重试");
     }
@@ -240,6 +242,7 @@ public class GiftReviewServiceImpl extends ServiceImpl<ReviewRecordMapper, Revie
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void pickupReissue(GiftPickupDTO dto) {
+        Long operatorId = getCurrentUserId();
         StudentApply apply = findPickupApplication(dto.getPickupCode());
         if (!Objects.equals(apply.getStatus(), 5)) {
             throw new BusinessException(40900, "申请未终审通过，无法补发");
@@ -254,7 +257,7 @@ public class GiftReviewServiceImpl extends ServiceImpl<ReviewRecordMapper, Revie
                 .eq(StudentApply::getIsDeleted, 0)
                 .set(StudentApply::getPickupStatus, 3)
                 .set(StudentApply::getPickupTime, LocalDateTime.now())
-                .set(StudentApply::getPickupOperatorId, dto.getOperatorId())
+                .set(StudentApply::getPickupOperatorId, operatorId)
                 .set(StudentApply::getPickupRemark, normalizeRemark(dto.getRemark()))
                 .set(StudentApply::getUpdateTime, LocalDateTime.now());
         ensureStateChanged(studentApplyMapper.update(null, updateWrapper), "该礼包状态已发生变化，请刷新后重试");
@@ -300,6 +303,7 @@ public class GiftReviewServiceImpl extends ServiceImpl<ReviewRecordMapper, Revie
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void supplement(GiftSupplementDTO dto) {
+        Long operatorId = getCurrentUserId();
         StudentApply apply = new StudentApply();
         apply.setStudentId(dto.getStudentId());
         apply.setPackBatchId(dto.getPackBatchId());
@@ -317,7 +321,7 @@ public class GiftReviewServiceImpl extends ServiceImpl<ReviewRecordMapper, Revie
         ReviewRecord record = new ReviewRecord();
         record.setApplyId(apply.getId());
         record.setApplyType(ApplyTypeEnum.GIFT_APPLY.getCode());
-        record.setReviewerId(dto.getOperatorId());
+        record.setReviewerId(operatorId);
         record.setReviewerRole(ReviewRoleEnum.SCHOOL_ADMIN.getCode());
         record.setAction(ReviewActionEnum.PASS.getCode());
         String comment = "历史数据补录";

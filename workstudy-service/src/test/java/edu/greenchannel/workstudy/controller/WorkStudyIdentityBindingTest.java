@@ -4,6 +4,7 @@ import edu.greenchannel.auth.CurrentUser;
 import edu.greenchannel.workstudy.entity.WorkStudyApply;
 import edu.greenchannel.workstudy.service.WorkStudyApplyService;
 import edu.greenchannel.workstudy.service.WorkStudyAttendanceService;
+import edu.greenchannel.workstudy.service.WorkStudyIdentityService;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -19,13 +20,15 @@ class WorkStudyIdentityBindingTest {
         WorkStudyApplyService service = mock(WorkStudyApplyService.class);
         when(service.applyForPosition(anyLong(), anyLong(), any(WorkStudyApply.class)))
                 .thenReturn(3L);
+        WorkStudyIdentityService identityService = mock(WorkStudyIdentityService.class);
+        when(identityService.requireStudentId(700L)).thenReturn(77L);
 
-        WorkStudyApplyController controller = new WorkStudyApplyController(service);
+        WorkStudyApplyController controller = new WorkStudyApplyController(service, identityService);
         WorkStudyApply body = new WorkStudyApply();
         body.setPositionId(5L);  // 设置positionId，因为Controller从这里读取
         body.setStudentId(999L); // 这个值应该被忽略
 
-        controller.submitApply(body, user(77L));
+        controller.submitApply(body, user(700L));
 
         verify(service).applyForPosition(eq(5L), eq(77L), eq(body));
 
@@ -35,8 +38,11 @@ class WorkStudyIdentityBindingTest {
     @Test
     void checkoutUsesAuthenticatedStudent() {
         WorkStudyAttendanceService service = mock(WorkStudyAttendanceService.class);
-        WorkStudyAttendanceController controller = new WorkStudyAttendanceController(service);
-        controller.checkOut(12L, user(77L));
+        WorkStudyIdentityService identityService = mock(WorkStudyIdentityService.class);
+        when(identityService.requireStudentId(700L)).thenReturn(77L);
+        WorkStudyAttendanceController controller =
+                new WorkStudyAttendanceController(service, identityService);
+        controller.checkOut(12L, user(700L));
         verify(service).checkOut(eq(12L), eq(77L));
     }
 

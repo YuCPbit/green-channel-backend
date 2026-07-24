@@ -49,6 +49,7 @@ public class TutorApplicationController {
      * 获取所有启用的申请类型
      */
     @GetMapping("/apply-types")
+    @RequirePermission("tutor:application:view")
     public ApiResponse<List<ApplyTypeResponse>> getApplyTypes() {
         return ApiResponse.success(service.getApplyTypes());
     }
@@ -118,6 +119,8 @@ public class TutorApplicationController {
      * 获取申请详情
      */
     @GetMapping("/applications/{id}")
+    @RequirePermission({"tutor:application:view", "college:tutor-review:view",
+            "school:tutor-disburse:view"})
     public ApiResponse<TutorApplyView> getDetail(
             @PathVariable Long id, HttpServletRequest httpRequest) {
         return ApiResponse.success(service.getDetail(currentUser(httpRequest), id));
@@ -129,6 +132,7 @@ public class TutorApplicationController {
      * 提交审核
      */
     @PostMapping("/reviews")
+    @RequirePermission({"college:tutor-review:view", "school:tutor-disburse:view"})
     public ApiResponse<Void> submitReview(
             @RequestBody TutorReviewRequest request, HttpServletRequest httpRequest) {
         service.submitReview(currentUser(httpRequest), request);
@@ -175,6 +179,7 @@ public class TutorApplicationController {
      * 查询资金下发列表（支持按状态筛选，0-不涉及 1-待下发 2-已下发）
      */
     @GetMapping("/disburse/list")
+    @RequirePermission("school:tutor-disburse:view")
     public ApiResponse<PageResult<TutorApplyView>> listDisburse(
             @RequestParam(required = false) Integer disburseStatus,
             @RequestParam(required = false) Long typeId,
@@ -188,6 +193,7 @@ public class TutorApplicationController {
      * 资金下发汇总统计
      */
     @GetMapping("/disburse/summary")
+    @RequirePermission("school:tutor-disburse:view")
     public ApiResponse<Map<String, Object>> getDisburseSummary(HttpServletRequest httpRequest) {
         return ApiResponse.success(service.getDisburseSummary(currentUser(httpRequest)));
     }

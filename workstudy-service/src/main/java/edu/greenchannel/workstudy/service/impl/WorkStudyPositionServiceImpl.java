@@ -9,6 +9,7 @@ import edu.greenchannel.workstudy.enums.WorkStudyStatus;
 import edu.greenchannel.workstudy.mapper.WorkStudyBatchMapper;
 import edu.greenchannel.workstudy.mapper.WorkStudyPositionMapper;
 import edu.greenchannel.workstudy.service.WorkStudyPositionService;
+import edu.greenchannel.workstudy.service.SystemConfigReader;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,9 +23,11 @@ public class WorkStudyPositionServiceImpl
         implements WorkStudyPositionService {
 
     private final WorkStudyBatchMapper batchMapper;
+    private final SystemConfigReader configReader;
 
-    public WorkStudyPositionServiceImpl(WorkStudyBatchMapper batchMapper) {
+    public WorkStudyPositionServiceImpl(WorkStudyBatchMapper batchMapper, SystemConfigReader configReader) {
         this.batchMapper = batchMapper;
+        this.configReader = configReader;
     }
 
     @Override
@@ -44,7 +47,8 @@ public class WorkStudyPositionServiceImpl
         }
 
         // 3. 校验薪酬标准（不低于最低工资标准）
-        BigDecimal minSalary = new BigDecimal("12.00"); // 后续从系统参数获取
+        BigDecimal minSalary = configReader.positiveDecimal(
+                "WORKSTUDY_MIN_HOURLY_WAGE", new BigDecimal("12.00"));
         if (position.getSalaryRate() == null ||
                 position.getSalaryRate().compareTo(minSalary) < 0) {
             throw new BusinessException(40000, "薪酬标准不得低于最低工资标准");
@@ -69,11 +73,12 @@ public class WorkStudyPositionServiceImpl
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void submitForApproval(Long positionId, Long userId) {
+    public void submitForApproval(Long positionId, Long userId, boolean canManageAll) {
         WorkStudyPosition position = getById(positionId);
         if (position == null || position.getDeleted() == 1) {
             throw new BusinessException(40400, "岗位不存在");
         }
+        requireOwner(position, userId, canManageAll);
 
         // 只有草稿状态的岗位才能提交审核
         if (position.getStatus() != WorkStudyStatus.POSITION_DRAFT.getCode()) {
@@ -110,7 +115,7 @@ public class WorkStudyPositionServiceImpl
     }
 
     @Override
-    public List<WorkStudyPosition> listValidPositions(Long batchId, Integer status) {
+    public List<WorkStudyPosition> listValidPositions(Long batchId, Integer status, Long publisherId) {
         LambdaQueryWrapper<WorkStudyPosition> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(WorkStudyPosition::getDeleted, 0)
                 .orderByDesc(WorkStudyPosition::getCreateTime);
@@ -122,17 +127,21 @@ public class WorkStudyPositionServiceImpl
         if (status != null) {
             wrapper.eq(WorkStudyPosition::getStatus, status);
         }
+        if (publisherId != null) {
+            wrapper.eq(WorkStudyPosition::getPublisherId, publisherId);
+        }
 
         return list(wrapper);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void offlinePosition(Long positionId, Long userId) {
+    public void offlinePosition(Long positionId, Long userId, boolean canManageAll) {
         WorkStudyPosition position = getById(positionId);
         if (position == null || position.getDeleted() == 1) {
             throw new BusinessException(40400, "岗位不存在");
         }
+        requireOwner(position, userId, canManageAll);
 
         // 只有已上架的岗位才能下架
         if (position.getStatus() != WorkStudyStatus.POSITION_ONLINE.getCode()) {
@@ -146,11 +155,12 @@ public class WorkStudyPositionServiceImpl
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void updatePosition(WorkStudyPosition position, Long userId) {
+    public void updatePosition(WorkStudyPosition position, Long userId, boolean canManageAll) {
         WorkStudyPosition existing = getById(position.getId());
         if (existing == null || existing.getDeleted() == 1) {
             throw new BusinessException(40400, "岗位不存在");
         }
+        requireOwner(existing, userId, canManageAll);
 
         // 只有草稿或驳回状态的岗位才能修改
         if (existing.getStatus() != WorkStudyStatus.POSITION_DRAFT.getCode() &&
@@ -170,5 +180,11 @@ public class WorkStudyPositionServiceImpl
         existing.setUpdateTime(LocalDateTime.now());
 
         updateById(existing);
+    }
+
+    private void requireOwner(WorkStudyPosition position, Long userId, boolean canManageAll) {
+        if (!canManageAll && !userId.equals(position.getPublisherId())) {
+            throw new BusinessException(40300, "无权操作其他用户创建的岗位");
+        }
     }
 }

@@ -6,6 +6,7 @@ import edu.greenchannel.auth.RequirePermission;
 import edu.greenchannel.common.ApiResponse;
 import edu.greenchannel.workstudy.entity.WorkStudyAgreement;
 import edu.greenchannel.workstudy.service.WorkStudyAgreementService;
+import edu.greenchannel.workstudy.service.WorkStudyIdentityService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,6 +18,7 @@ import java.time.LocalDate;
 public class WorkStudyAgreementController {
 
     private final WorkStudyAgreementService agreementService;
+    private final WorkStudyIdentityService identityService;
 
     /**
      * 学生签署协议
@@ -25,7 +27,8 @@ public class WorkStudyAgreementController {
     @RequirePermission("workstudy:agreement:sign")
     public ApiResponse<String> sign(@RequestParam Long agreementId,
                                     @RequestAttribute(AuthInterceptor.CURRENT_USER_ATTRIBUTE) CurrentUser currentUser) {
-        agreementService.signAgreement(agreementId, currentUser.id());
+        agreementService.signAgreement(
+                agreementId, identityService.requireStudentId(currentUser.id()));
         return ApiResponse.success("签署成功");
     }
 
@@ -49,8 +52,11 @@ public class WorkStudyAgreementController {
     public ApiResponse<WorkStudyAgreement> getAgreement(
             @PathVariable Long agreementId,
             @RequestAttribute(AuthInterceptor.CURRENT_USER_ATTRIBUTE) CurrentUser currentUser) {
+        long subjectId = currentUser.userType() == 1
+                ? identityService.requireStudentId(currentUser.id())
+                : currentUser.id();
         return ApiResponse.success(agreementService.getAccessibleAgreement(
-                agreementId, currentUser.id(), currentUser.userType()));
+                agreementId, subjectId, currentUser.userType()));
     }
 
     /**
@@ -59,7 +65,8 @@ public class WorkStudyAgreementController {
     @GetMapping("/student")
     @RequirePermission("workstudy:agreement:view")
     public ApiResponse<?> getStudentAgreements(@RequestAttribute(AuthInterceptor.CURRENT_USER_ATTRIBUTE) CurrentUser currentUser) {
-        return ApiResponse.success(agreementService.listAgreements(currentUser.id(), null));
+        return ApiResponse.success(agreementService.listAgreements(
+                identityService.requireStudentId(currentUser.id()), null));
     }
 
     /**

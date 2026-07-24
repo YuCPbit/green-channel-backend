@@ -10,6 +10,7 @@ import edu.greenchannel.workstudy.dto.PageResult;
 import edu.greenchannel.workstudy.dto.WorkStudyEvaluationVO;
 import edu.greenchannel.workstudy.entity.WorkStudyEvaluation;
 import edu.greenchannel.workstudy.service.WorkStudyEvaluationService;
+import edu.greenchannel.workstudy.service.WorkStudyIdentityService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,6 +23,7 @@ import java.util.Map;
 public class WorkStudyEvaluationController {
 
     private final WorkStudyEvaluationService evaluationService;
+    private final WorkStudyIdentityService identityService;
 
     /**
      * 提交评价（用工部门）
@@ -45,7 +47,7 @@ public class WorkStudyEvaluationController {
                                                   @RequestParam int month,
                                                   @RequestAttribute(AuthInterceptor.CURRENT_USER_ATTRIBUTE) CurrentUser currentUser) {
         if (currentUser.userType() == 1) {
-            studentId = currentUser.id();
+            studentId = identityService.requireStudentId(currentUser.id());
         }
         WorkStudyEvaluation eval = evaluationService.lambdaQuery()
                 .eq(WorkStudyEvaluation::getStudentId, studentId)
@@ -121,7 +123,7 @@ public class WorkStudyEvaluationController {
             @RequestParam(required = false) Integer evalMonth,
             @RequestAttribute(AuthInterceptor.CURRENT_USER_ATTRIBUTE) CurrentUser currentUser) {
         PageResult<WorkStudyEvaluationVO> result = evaluationService.getMyEvaluations(
-                page, size, currentUser.id(), evalYear, evalMonth);
+                page, size, identityService.requireStudentId(currentUser.id()), evalYear, evalMonth);
         return ApiResponse.success(result);
     }
 
@@ -143,7 +145,7 @@ public class WorkStudyEvaluationController {
             @PathVariable Long studentId,
             @RequestAttribute(AuthInterceptor.CURRENT_USER_ATTRIBUTE) CurrentUser currentUser) {
         if (currentUser.userType() == 1) {
-            studentId = currentUser.id();
+            studentId = identityService.requireStudentId(currentUser.id());
         }
         return ApiResponse.success(evaluationService.lambdaQuery()
                 .eq(WorkStudyEvaluation::getStudentId, studentId)

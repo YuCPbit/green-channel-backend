@@ -55,7 +55,7 @@ green-channel-backend/
 
 4. 网关会按路径将请求转发至对应服务；部署时可通过
    `PLATFORM_SERVICE_URL`、`GIFT_SERVICE_URL`、`SUBSIDY_SERVICE_URL`、`WORKSTUDY_SERVICE_URL`
-   和 `DASHBOARD_SERVICE_URL` 覆盖服务地址。生产或其他开发域名通过逗号分隔的
+   、`DASHBOARD_SERVICE_URL` 和 `TUTOR_AFFAIR_SERVICE_URL` 覆盖服务地址。生产或其他开发域名通过逗号分隔的
    `APP_CORS_ALLOWED_ORIGINS` 配置，默认只允许前端开发地址 `http://localhost:5173`。前端安装和启动方式见前端仓库 README。
 
 文档入口统一从 `docs/README.md` 进入。开发协作、服务接口、数据库、实施记录及历史归档均已分目录；

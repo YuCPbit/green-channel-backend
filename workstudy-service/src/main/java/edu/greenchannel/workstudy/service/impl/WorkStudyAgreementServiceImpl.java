@@ -114,9 +114,9 @@ public class WorkStudyAgreementServiceImpl
             throw new BusinessException(40000, "协议已签署或已过期");
         }
 
-        // 3. 时间校验（协议必须在有效期内签署）
+        // 协议允许在上岗前预签，但到期后不能补签。
         LocalDate today = LocalDate.now();
-        if (today.isBefore(agreement.getStartDate()) || today.isAfter(agreement.getEndDate())) {
+        if (agreement.getEndDate() == null || today.isAfter(agreement.getEndDate())) {
             throw new BusinessException(40000, "协议已过签署有效期");
         }
 

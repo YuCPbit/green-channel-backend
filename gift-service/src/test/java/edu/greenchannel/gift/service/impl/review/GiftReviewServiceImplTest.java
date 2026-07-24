@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import edu.greenchannel.auth.TokenService;
+import edu.greenchannel.auth.CurrentUser;
 import edu.greenchannel.common.BusinessException;
 import edu.greenchannel.gift.dto.review.GiftPickupDTO;
 import edu.greenchannel.gift.entity.StudentApply;
@@ -19,6 +20,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 
 import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -49,6 +52,10 @@ class GiftReviewServiceImplTest {
                 new MapperBuilderAssistant(new MybatisConfiguration(), "gift-review-test"),
                 StudentApply.class);
         service = new GiftReviewServiceImpl(studentApplyMapper, request, tokenService);
+        when(request.getHeader("Authorization")).thenReturn("Bearer test-token");
+        when(tokenService.resolve("test-token")).thenReturn(Optional.of(new CurrentUser(
+                88L, "school01", "测试资助中心", 4, "学校资助中心",
+                List.of("SCHOOL_ADMIN"), List.of("gift:pickup:manage"), List.of("礼包核销管理"))));
     }
 
     @Test

@@ -7,6 +7,7 @@ import edu.greenchannel.common.ApiResponse;
 import edu.greenchannel.common.BusinessException;
 import edu.greenchannel.workstudy.entity.WorkStudyApply;
 import edu.greenchannel.workstudy.service.WorkStudyApplyService;
+import edu.greenchannel.workstudy.service.WorkStudyIdentityService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,6 +19,7 @@ import java.util.List;
 public class WorkStudyApplyController {
 
     private final WorkStudyApplyService applyService;
+    private final WorkStudyIdentityService identityService;
 
     /**
      * 学生报名岗位
@@ -27,7 +29,7 @@ public class WorkStudyApplyController {
     public ApiResponse<Long> submitApply(@RequestBody WorkStudyApply applyInfo,
                                          @RequestAttribute(AuthInterceptor.CURRENT_USER_ATTRIBUTE) CurrentUser currentUser) {
         Long positionId = applyInfo.getPositionId();
-        Long studentId = currentUser.id();
+        Long studentId = identityService.requireStudentId(currentUser.id());
         applyInfo.setStudentId(studentId);
         Long applyId = applyService.applyForPosition(positionId, studentId, applyInfo);
         return ApiResponse.success(applyId);
@@ -40,7 +42,7 @@ public class WorkStudyApplyController {
     @RequirePermission("workstudy:apply:view")
     public ApiResponse<List<WorkStudyApply>> myApplications(
             @RequestAttribute(AuthInterceptor.CURRENT_USER_ATTRIBUTE) CurrentUser currentUser) {
-        Long studentId = currentUser.id();
+        Long studentId = identityService.requireStudentId(currentUser.id());
         List<WorkStudyApply> applications = applyService.getStudentApplications(studentId);
         return ApiResponse.success(applications);
     }
@@ -91,7 +93,8 @@ public class WorkStudyApplyController {
             throw new BusinessException(40400, "申请记录不存在");
         }
         if (currentUser.userType() == 1
-                && !java.util.Objects.equals(currentUser.id(), apply.getStudentId())) {
+                && !java.util.Objects.equals(
+                        identityService.requireStudentId(currentUser.id()), apply.getStudentId())) {
             throw new BusinessException(40300, "无权查看该申请");
         }
         return ApiResponse.success(apply);

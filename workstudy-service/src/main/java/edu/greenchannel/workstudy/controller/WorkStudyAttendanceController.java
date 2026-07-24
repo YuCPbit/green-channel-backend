@@ -5,6 +5,7 @@ import edu.greenchannel.auth.CurrentUser;
 import edu.greenchannel.auth.RequirePermission;
 import edu.greenchannel.common.ApiResponse;
 import edu.greenchannel.workstudy.service.WorkStudyAttendanceService;
+import edu.greenchannel.workstudy.service.WorkStudyIdentityService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
@@ -18,6 +19,7 @@ import java.time.LocalDateTime;
 public class WorkStudyAttendanceController {
 
     private final WorkStudyAttendanceService attendanceService;
+    private final WorkStudyIdentityService identityService;
 
     /**
      * 学生签到
@@ -28,7 +30,8 @@ public class WorkStudyAttendanceController {
                                      @RequestParam Integer checkType,
                                      @RequestParam String location,
                                      @RequestAttribute(AuthInterceptor.CURRENT_USER_ATTRIBUTE) CurrentUser currentUser) {
-        Long attendanceId = attendanceService.checkIn(hireId, currentUser.id(), checkType, location);
+        Long attendanceId = attendanceService.checkIn(
+                hireId, identityService.requireStudentId(currentUser.id()), checkType, location);
         return ApiResponse.success(attendanceId);
     }
 
@@ -39,7 +42,8 @@ public class WorkStudyAttendanceController {
     @RequirePermission("workstudy:attendance:checkout")
     public ApiResponse<Long> checkOut(@RequestParam Long attendanceId,
                                       @RequestAttribute(AuthInterceptor.CURRENT_USER_ATTRIBUTE) CurrentUser currentUser) {
-        Long id = attendanceService.checkOut(attendanceId, currentUser.id());
+        Long id = attendanceService.checkOut(
+                attendanceId, identityService.requireStudentId(currentUser.id()));
         return ApiResponse.success(id);
     }
 
@@ -54,7 +58,8 @@ public class WorkStudyAttendanceController {
                                          @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime checkOutTime,
                                          @RequestParam String reason,
                                          @RequestAttribute(AuthInterceptor.CURRENT_USER_ATTRIBUTE) CurrentUser currentUser) {
-        Long attendanceId = attendanceService.applyRepair(hireId, currentUser.id(),
+        Long attendanceId = attendanceService.applyRepair(
+                hireId, identityService.requireStudentId(currentUser.id()),
                 attendanceDate, checkInTime, checkOutTime, reason);
         return ApiResponse.success(attendanceId);
     }
@@ -66,7 +71,8 @@ public class WorkStudyAttendanceController {
     @RequirePermission("workstudy:attendance:confirm")
     public ApiResponse<Void> confirmAttendance(@PathVariable Long attendanceId,
                                                @RequestAttribute(AuthInterceptor.CURRENT_USER_ATTRIBUTE) CurrentUser currentUser) {
-        attendanceService.confirmAttendance(attendanceId, currentUser.id());
+        attendanceService.confirmAttendance(
+                attendanceId, currentUser.id(), currentUser.userType() == 4 || currentUser.userType() == 5);
         return ApiResponse.success();
     }
 
@@ -76,7 +82,8 @@ public class WorkStudyAttendanceController {
             @RequestParam(required = false) Long hireId,
             @RequestParam(required = false) Integer status,
             @RequestAttribute(AuthInterceptor.CURRENT_USER_ATTRIBUTE) CurrentUser currentUser) {
-        return ApiResponse.success(attendanceService.listRecords(currentUser.id(), hireId, status));
+        return ApiResponse.success(attendanceService.listRecords(
+                identityService.requireStudentId(currentUser.id()), hireId, status));
     }
 
     @GetMapping("/list")
@@ -84,7 +91,10 @@ public class WorkStudyAttendanceController {
     public ApiResponse<?> listAttendance(
             @RequestParam(required = false) Long studentId,
             @RequestParam(required = false) Long hireId,
-            @RequestParam(required = false) Integer status) {
-        return ApiResponse.success(attendanceService.listRecords(studentId, hireId, status));
+            @RequestParam(required = false) Integer status,
+            @RequestAttribute(AuthInterceptor.CURRENT_USER_ATTRIBUTE) CurrentUser currentUser) {
+        return ApiResponse.success(attendanceService.listManageableRecords(
+                studentId, hireId, status, currentUser.id(),
+                currentUser.userType() == 4 || currentUser.userType() == 5));
     }
 }

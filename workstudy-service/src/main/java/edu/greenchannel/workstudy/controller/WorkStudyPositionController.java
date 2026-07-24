@@ -37,7 +37,7 @@ public class WorkStudyPositionController {
     @RequirePermission("workstudy:position:submit")
     public ApiResponse<Void> submitForApproval(@PathVariable Long positionId,
                                                @RequestAttribute(AuthInterceptor.CURRENT_USER_ATTRIBUTE) CurrentUser currentUser) {
-        positionService.submitForApproval(positionId, currentUser.id());
+        positionService.submitForApproval(positionId, currentUser.id(), canManageAll(currentUser));
         return ApiResponse.success();
     }
 
@@ -63,10 +63,13 @@ public class WorkStudyPositionController {
             @RequestParam(required = false) Long batchId,
             @RequestParam(required = false) Integer status,
             @RequestAttribute(AuthInterceptor.CURRENT_USER_ATTRIBUTE) CurrentUser currentUser) {
-        if (currentUser.userType() == 1) {
+        Long publisherId = null;
+        if (currentUser.userType() == 1 || currentUser.userType() == 2) {
             status = 2;
+        } else if (currentUser.userType() == 3) {
+            publisherId = currentUser.id();
         }
-        List<WorkStudyPosition> positions = positionService.listValidPositions(batchId, status);
+        List<WorkStudyPosition> positions = positionService.listValidPositions(batchId, status, publisherId);
         return ApiResponse.success(positions);
     }
 
@@ -77,7 +80,7 @@ public class WorkStudyPositionController {
     @RequirePermission("workstudy:position:offline")
     public ApiResponse<Void> offlinePosition(@PathVariable Long positionId,
                                              @RequestAttribute(AuthInterceptor.CURRENT_USER_ATTRIBUTE) CurrentUser currentUser) {
-        positionService.offlinePosition(positionId, currentUser.id());
+        positionService.offlinePosition(positionId, currentUser.id(), canManageAll(currentUser));
         return ApiResponse.success();
     }
 
@@ -90,7 +93,7 @@ public class WorkStudyPositionController {
                                             @RequestBody WorkStudyPosition position,
                                             @RequestAttribute(AuthInterceptor.CURRENT_USER_ATTRIBUTE) CurrentUser currentUser) {
         position.setId(positionId);
-        positionService.updatePosition(position, currentUser.id());
+        positionService.updatePosition(position, currentUser.id(), canManageAll(currentUser));
         return ApiResponse.success();
     }
 
@@ -110,5 +113,9 @@ public class WorkStudyPositionController {
             throw new BusinessException(40400, "岗位不存在或未开放");
         }
         return ApiResponse.success(position);
+    }
+
+    private boolean canManageAll(CurrentUser currentUser) {
+        return currentUser.userType() == 4 || currentUser.userType() == 5;
     }
 }

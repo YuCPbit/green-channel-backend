@@ -7,7 +7,9 @@ import edu.greenchannel.workstudy.entity.WorkStudyAttendance;
 import edu.greenchannel.workstudy.entity.WorkStudyHire;
 import edu.greenchannel.workstudy.mapper.WorkStudyAttendanceMapper;
 import edu.greenchannel.workstudy.mapper.WorkStudyHireMapper;
+import edu.greenchannel.workstudy.mapper.WorkStudyPositionMapper;
 import edu.greenchannel.workstudy.service.WorkStudyAttendanceService;
+import edu.greenchannel.workstudy.service.SystemConfigReader;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -15,11 +17,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 
 @Slf4j
@@ -30,11 +32,8 @@ public class WorkStudyAttendanceServiceImpl
         implements WorkStudyAttendanceService {
 
     private final WorkStudyHireMapper hireMapper;
-
-    // 系统参数（后续从配置表读取）
-    private static final LocalTime WORK_START = LocalTime.of(8, 30);
-    private static final LocalTime WORK_END = LocalTime.of(17, 30);
-    private static final int MAX_DAILY_HOURS = 8; // WS_MAX_WEEKLY_HOURS / 5
+    private final WorkStudyPositionMapper positionMapper;
+    private final SystemConfigReader configReader;
 
     // ==================== 1. 签到 ====================
     @Override
@@ -42,15 +41,16 @@ public class WorkStudyAttendanceServiceImpl
     public Long checkIn(Long hireId, Long studentId, Integer checkType, String location) {
         validateHire(hireId, studentId);
         LocalDate today = LocalDate.now();
+        if (checkType == null || (checkType != 1 && checkType != 2)) {
+            throw new BusinessException(40000, "打卡方式仅支持定位或二维码");
+        }
+        if (location == null || location.isBlank()) {
+            throw new BusinessException(40000, "打卡位置不能为空");
+        }
 
         // 校验：同一天不能重复打卡
         if (existsToday(hireId, today)) {
             throw new BusinessException(40000, "今日已打卡");
-        }
-
-        // 校验：周末不允许打卡（勤工助学原则上不安排周末）
-        if (isWeekend(today)) {
-            throw new BusinessException(40000, "周末无需打卡");
         }
 
         WorkStudyAttendance attendance = new WorkStudyAttendance();
@@ -87,7 +87,8 @@ public class WorkStudyAttendanceServiceImpl
         // 计算工时
         BigDecimal hours = calculateWorkHours(
                 attendance.getCheckInTime(), now);
-        attendance.setWorkHours(hours.min(BigDecimal.valueOf(MAX_DAILY_HOURS)));
+        validateWeeklyHours(attendance.getHireId(), attendance.getAttendanceDate(), attendance.getId(), hours);
+        attendance.setWorkHours(hours);
 
         attendance.setUpdateTime(LocalDateTime.now());
         updateById(attendance);
@@ -103,10 +104,14 @@ public class WorkStudyAttendanceServiceImpl
                             LocalDateTime checkInTime, LocalDateTime checkOutTime, String reason) {
         validateHire(hireId, studentId);
 
-        // 校验：不能补当天的卡
-        if (attendanceDate.equals(LocalDate.now())) {
-            throw new BusinessException(40000, "当日考勤请在当日处理");
+        if (!attendanceDate.isBefore(LocalDate.now())) {
+            throw new BusinessException(40000, "只能申请补录过去日期的考勤");
         }
+        BigDecimal repairHours = calculateWorkHours(checkInTime, checkOutTime);
+        if (repairHours.signum() <= 0) {
+            throw new BusinessException(40000, "补卡签退时间必须晚于签到时间");
+        }
+        validateWeeklyHours(hireId, attendanceDate, null, repairHours);
 
         // 校验：该日期没有正常打卡记录
         if (existsToday(hireId, attendanceDate)) {
@@ -119,7 +124,7 @@ public class WorkStudyAttendanceServiceImpl
         attendance.setAttendanceDate(attendanceDate);
         attendance.setCheckInTime(checkInTime);
         attendance.setCheckOutTime(checkOutTime);
-        attendance.setWorkHours(calculateWorkHours(checkInTime, checkOutTime));
+        attendance.setWorkHours(repairHours);
         attendance.setStatus(6); // 6-补打卡待审批
         attendance.setRemark(reason);
         attendance.setDeleted(0);
@@ -134,7 +139,7 @@ public class WorkStudyAttendanceServiceImpl
     // ==================== 4. 部门确认 ====================
     @Override
     @Transactional
-    public void confirmAttendance(Long attendanceId, Long confirmUserId) {
+    public void confirmAttendance(Long attendanceId, Long confirmUserId, boolean canManageAll) {
         WorkStudyAttendance attendance = getById(attendanceId);
         if (attendance == null || attendance.getDeleted() == 1) {
             throw new BusinessException(40400, "考勤记录不存在");
@@ -145,7 +150,7 @@ public class WorkStudyAttendanceServiceImpl
             throw new BusinessException(40000, "该记录无需确认或已确认");
         }
 
-        // TODO: 校验confirmUserId是否是该岗位的部门负责人
+        requirePositionManager(attendance.getHireId(), confirmUserId, canManageAll);
 
         attendance.setConfirmedBy(confirmUserId);
         attendance.setConfirmTime(LocalDateTime.now());
@@ -192,6 +197,24 @@ public class WorkStudyAttendanceServiceImpl
                 .list();
     }
 
+    @Override
+    public List<WorkStudyAttendance> listManageableRecords(
+            Long studentId, Long hireId, Integer status, Long operatorId, boolean canManageAll) {
+        List<WorkStudyAttendance> records = listRecords(studentId, hireId, status);
+        if (canManageAll) {
+            return records;
+        }
+        return records.stream().filter(record -> {
+            WorkStudyHire hire = hireMapper.selectById(record.getHireId());
+            if (hire == null || hire.getDeleted() == 1) {
+                return false;
+            }
+            var position = positionMapper.selectById(hire.getPositionId());
+            return position != null && position.getDeleted() != 1
+                    && operatorId.equals(position.getPublisherId());
+        }).toList();
+    }
+
     // ==================== 私有方法 ====================
 
     private void validateHire(Long hireId, Long studentId) {
@@ -204,6 +227,21 @@ public class WorkStudyAttendanceServiceImpl
         }
         if (hire.getHireStatus() != 1) { // 1-在岗
             throw new BusinessException(40000, "当前状态不允许打卡");
+        }
+    }
+
+    private void requirePositionManager(Long hireId, Long operatorId, boolean canManageAll) {
+        if (canManageAll) {
+            return;
+        }
+        WorkStudyHire hire = hireMapper.selectById(hireId);
+        if (hire == null || hire.getDeleted() == 1) {
+            throw new BusinessException(40400, "录用记录不存在");
+        }
+        var position = positionMapper.selectById(hire.getPositionId());
+        if (position == null || position.getDeleted() == 1
+                || !operatorId.equals(position.getPublisherId())) {
+            throw new BusinessException(40300, "无权确认其他部门的考勤记录");
         }
     }
 
@@ -227,9 +265,29 @@ public class WorkStudyAttendanceServiceImpl
                 .exists();
     }
 
-    private boolean isWeekend(LocalDate date) {
-        DayOfWeek day = date.getDayOfWeek();
-        return day == DayOfWeek.SATURDAY || day == DayOfWeek.SUNDAY;
+    private void validateWeeklyHours(
+            Long hireId,
+            LocalDate attendanceDate,
+            Long excludedAttendanceId,
+            BigDecimal hoursToAdd) {
+        LocalDate weekStart = attendanceDate.with(TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY));
+        LocalDate weekEnd = attendanceDate.with(TemporalAdjusters.nextOrSame(java.time.DayOfWeek.SUNDAY));
+        List<WorkStudyAttendance> weeklyRecords = lambdaQuery()
+                .eq(WorkStudyAttendance::getHireId, hireId)
+                .between(WorkStudyAttendance::getAttendanceDate, weekStart, weekEnd)
+                .ne(excludedAttendanceId != null, WorkStudyAttendance::getId, excludedAttendanceId)
+                .in(WorkStudyAttendance::getStatus, 1, 7)
+                .eq(WorkStudyAttendance::getDeleted, 0)
+                .list();
+        BigDecimal existingHours = weeklyRecords.stream()
+                .map(record -> record.getWorkHours() == null ? BigDecimal.ZERO : record.getWorkHours())
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal maxWeeklyHours = configReader.positiveDecimal(
+                "WORKSTUDY_MAX_WEEKLY_HOURS", BigDecimal.valueOf(8));
+        if (existingHours.add(hoursToAdd).compareTo(maxWeeklyHours) > 0) {
+            throw new BusinessException(
+                    40900, "本周累计工时不得超过" + maxWeeklyHours.stripTrailingZeros().toPlainString() + "小时");
+        }
     }
 
     private BigDecimal calculateWorkHours(LocalDateTime start, LocalDateTime end) {

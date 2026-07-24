@@ -53,19 +53,31 @@ INSERT INTO gc_permission
 VALUES
   ('首页', 'home:view', 1, 0, '/', 'home', 10),
   ('绿色通道', 'student:green:view', 1, 0, '/green-channel', 'leaf', 20),
+  ('绿色通道审核', 'gift:review:view', 1, 0, '/gift/review', 'audit', 52),
+  ('绿色通道批次管理', 'gift:green-batch:manage', 1, 0, '/gift/green-batches', 'calendar', 113),
+  ('大礼包批次管理', 'gift:pack-batch:manage', 1, 0, '/gift/pack-batches', 'calendar', 114),
+  ('大礼包物品管理', 'gift:item:manage', 1, 0, '/gift/items', 'gift', 115),
+  ('名额分配管理', 'gift:quota:manage', 1, 0, '/gift/quotas', 'team', 116),
+  ('礼包核销管理', 'gift:pickup:manage', 1, 0, '/gift/pickup', 'check', 117),
+  ('补录管理', 'gift:supplement:manage', 1, 0, '/gift/supplement', 'form', 118),
+  ('取消绿色通道终审', 'gift:review:school', 2, 0, NULL, NULL, 200),
   ('困难补助', 'student:subsidy:view', 1, 0, '/subsidy', 'fund', 30),
   ('学生管理', 'tutor:student:view', 1, 0, '/students', 'team', 40),
   ('资助审核', 'tutor:review:view', 1, 0, '/aid-review', 'audit', 50),
   ('事务申请', 'tutor:application:view', 1, 0, '/tutor-application', 'form', 60),
+  ('事务审批', 'college:tutor-review:view', 1, 0, '/tutor-review', 'audit', 72),
+  ('事务审批', 'school:tutor-disburse:view', 1, 0, '/tutor-review', 'audit', 112),
   ('学院审核', 'college:review:view', 1, 0, '/college-review', 'audit', 70),
   ('额度管理', 'college:quota:view', 1, 0, '/quota', 'wallet', 80),
   ('学院报表', 'college:report:view', 1, 0, '/college-report', 'chart', 90),
   ('新生管理', 'school:student:view', 1, 0, '/school/students', 'team', 95),
   ('新生编辑', 'school:student:edit', 2, 0, NULL, NULL, 96),
   ('事务类型配置', 'school:tutor-type:edit', 2, 0, NULL, NULL, 97),
+  ('事务类型配置', 'school:tutor-type:view', 1, 0, '/tutor-type-config', 'setting', 98),
   ('批次配置', 'school:batch:view', 1, 0, '/batch', 'calendar', 100),
   ('学校审核', 'school:review:view', 1, 0, '/school-review', 'audit', 110),
   ('资金管理', 'school:fund:view', 1, 0, '/fund', 'wallet', 120),
+  ('资金台账', 'school:ledger:menu', 1, 0, '/fund-ledger', 'file', 121),
   ('资助方案管理', 'school:plan:view', 1, 0, '/aid-plans', 'solution', 122),
   ('申诉处理', 'school:appeal:view', 1, 0, '/appeals', 'audit', 124),
   ('问卷管理', 'school:survey:view', 1, 0, '/surveys', 'form', 126),
@@ -111,7 +123,9 @@ VALUES
   ('数据看板', 'school:dashboard:view', 1, 0, '/dashboard', 'dashboard', 130),
   ('消息中心', 'message:view', 1, 0, '/messages', 'bell', 140),
   ('用户管理', 'system:user:view', 1, 0, '/system/users', 'user', 150),
+  ('用户编辑', 'system:user:edit', 2, 0, NULL, NULL, 155),
   ('角色权限', 'system:rbac:view', 1, 0, '/system/rbac', 'safety', 160),
+  ('角色权限编辑', 'system:rbac:edit', 2, 0, NULL, NULL, 165),
   ('字典参数', 'system:dictionary:view', 1, 0, '/system/dictionary', 'setting', 170),
   ('字典编辑', 'system:dictionary:edit', 2, 0, NULL, NULL, 175),
   ('接口监控', 'system:integration:view', 1, 0, '/system/integration', 'api', 180),
@@ -139,14 +153,15 @@ JOIN gc_permission p ON (
        'workstudy:agreement:view', 'workstudy:agreement:sign'))
   OR (r.role_code = 'TUTOR' AND p.permission_code IN
       ('tutor:student:view', 'tutor:review:view', 'tutor:application:view',
-       'tutor:appeal:view', 'message:view', 'workstudy:position:view',
+       'tutor:appeal:view', 'message:view', 'gift:review:view', 'workstudy:position:view',
        'workstudy:apply:view', 'workstudy:apply:review',
        'workstudy:apply:tutor-recommend', 'workstudy:attendance:view',
        'workstudy:attendance:confirm', 'workstudy:evaluation:view',
        'workstudy:evaluation:submit'))
   OR (r.role_code = 'COLLEGE_ADMIN' AND p.permission_code IN
       ('college:review:view', 'college:quota:view', 'college:report:view',
-       'college:appeal:view', 'message:view', 'workstudy:batch:view',
+       'college:tutor-review:view',
+       'college:appeal:view', 'message:view', 'gift:review:view', 'workstudy:batch:view',
        'workstudy:position:view', 'workstudy:position:publish',
        'workstudy:position:submit', 'workstudy:position:update',
        'workstudy:position:offline', 'workstudy:apply:view',
@@ -155,10 +170,14 @@ JOIN gc_permission p ON (
        'workstudy:evaluation:view', 'workstudy:evaluation:submit',
        'workstudy:salary:view', 'workstudy:salary:dept-confirm'))
   OR (r.role_code = 'SCHOOL_ADMIN' AND p.permission_code IN
-      ('school:student:view', 'school:student:edit', 'school:tutor-type:edit',
+      ('school:student:view', 'school:student:edit', 'school:tutor-type:view', 'school:tutor-type:edit',
        'school:batch:view', 'school:review:view',
-       'school:fund:view', 'school:plan:view', 'school:appeal:view',
-       'school:survey:view', 'workstudy:movement:review',
+       'school:fund:view', 'school:ledger:menu', 'school:tutor-disburse:view',
+       'school:plan:view', 'school:appeal:view',
+       'school:survey:view', 'gift:review:view', 'gift:review:school',
+       'gift:green-batch:manage', 'gift:pack-batch:manage', 'gift:item:manage',
+       'gift:quota:manage', 'gift:pickup:manage', 'gift:supplement:manage',
+       'workstudy:movement:review',
        'workstudy:batch:view', 'workstudy:batch:create', 'workstudy:batch:update',
        'workstudy:batch:delete', 'workstudy:position:view',
        'workstudy:position:approve', 'workstudy:position:update',
@@ -172,10 +191,13 @@ JOIN gc_permission p ON (
        'workstudy:agreement:view', 'workstudy:agreement:renew',
        'school:dashboard:view', 'message:view'))
   OR (r.role_code = 'SYSTEM_ADMIN' AND p.permission_code IN
-      ('message:view', 'school:tutor-type:edit', 'system:user:view', 'system:rbac:view',
+      ('message:view', 'school:tutor-type:view', 'school:tutor-type:edit',
+       'system:user:view', 'system:user:edit',
+       'system:rbac:view', 'system:rbac:edit',
        'system:dictionary:view', 'system:dictionary:edit',
        'system:integration:view', 'system:log:view'))
   OR (r.role_code = 'SYSTEM_ADMIN' AND p.permission_code LIKE 'workstudy:%')
+  OR (r.role_code = 'SYSTEM_ADMIN' AND p.permission_code LIKE 'gift:%')
 )
 WHERE r.role_code IN ('STUDENT', 'TUTOR', 'COLLEGE_ADMIN', 'SCHOOL_ADMIN', 'SYSTEM_ADMIN')
 ON DUPLICATE KEY UPDATE is_deleted = 0;
@@ -618,3 +640,13 @@ INSERT INTO gc_dictionary (dict_type_code, dict_type_name, item_code, item_name,
 ('FUND_SOURCE', '资金来源', 'DONATION', '社会捐赠', 3)
 ON DUPLICATE KEY UPDATE
   dict_type_name = VALUES(dict_type_name), item_name = VALUES(item_name), sort = VALUES(sort), is_deleted = 0;
+
+INSERT INTO gc_system_config
+  (config_name, config_key, config_value, config_type, description, is_editable)
+VALUES
+  ('申诉窗口期天数', 'APPEAL_WINDOW_DAYS', '3', 'NUMBER', '审核不通过后允许申诉的天数', 1),
+  ('勤工最低时薪', 'WORKSTUDY_MIN_HOURLY_WAGE', '12.00', 'NUMBER', '岗位发布允许的最低小时工资', 1),
+  ('勤工每周工时上限', 'WORKSTUDY_MAX_WEEKLY_HOURS', '8', 'NUMBER', '学生单个录用岗位每周累计工时上限', 1)
+ON DUPLICATE KEY UPDATE
+  config_name = VALUES(config_name), config_type = VALUES(config_type),
+  description = VALUES(description), is_editable = VALUES(is_editable), is_deleted = 0;

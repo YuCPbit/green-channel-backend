@@ -9,7 +9,9 @@ import edu.greenchannel.workstudy.dto.ActiveHireVO;
 import edu.greenchannel.workstudy.dto.PageResult;
 import edu.greenchannel.workstudy.dto.WorkStudyEvaluationVO;
 import edu.greenchannel.workstudy.entity.WorkStudyEvaluation;
+import edu.greenchannel.workstudy.entity.WorkStudyHire;
 import edu.greenchannel.workstudy.mapper.WorkStudyEvaluationMapper;
+import edu.greenchannel.workstudy.mapper.WorkStudyHireMapper;
 import edu.greenchannel.workstudy.service.NotificationService;
 import edu.greenchannel.workstudy.service.WorkStudyEvaluationService;
 import lombok.RequiredArgsConstructor;
@@ -30,11 +32,21 @@ public class WorkStudyEvaluationServiceImpl
         implements WorkStudyEvaluationService {
 
     private final WorkStudyEvaluationMapper evaluationMapper;
+    private final WorkStudyHireMapper hireMapper;
     private final NotificationService notificationService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void submitEvaluation(WorkStudyEvaluation evaluation) {
+        if (evaluation.getHireId() == null) {
+            throw new BusinessException(40000, "录用记录不能为空");
+        }
+        WorkStudyHire hire = hireMapper.selectById(evaluation.getHireId());
+        if (hire == null || hire.getDeleted() == 1 || hire.getHireStatus() != 1) {
+            throw new BusinessException(40900, "录用记录不存在或学生已不在岗");
+        }
+        evaluation.setStudentId(hire.getStudentId());
+
         long count = count(new LambdaQueryWrapper<WorkStudyEvaluation>()
                 .eq(WorkStudyEvaluation::getHireId, evaluation.getHireId())
                 .eq(WorkStudyEvaluation::getEvalYear, evaluation.getEvalYear())
@@ -166,8 +178,7 @@ public class WorkStudyEvaluationServiceImpl
 
             log.warn("触发评价预警：{}", warningContent);
 
-            notificationService.sendWarning(
-                    5001L, // 资助中心管理员ID
+            notificationService.sendWarningToSchoolAdmins(
                     "勤工助学评价预警",
                     warningContent,
                     studentId.toString()

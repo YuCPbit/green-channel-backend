@@ -7,6 +7,7 @@ import edu.greenchannel.common.ApiResponse;
 import edu.greenchannel.common.BusinessException;
 import edu.greenchannel.workstudy.entity.WorkStudySalary;
 import edu.greenchannel.workstudy.service.WorkStudySalaryService;
+import edu.greenchannel.workstudy.service.WorkStudyIdentityService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,6 +20,7 @@ import java.time.YearMonth;
 public class WorkStudySalaryController {
 
     private final WorkStudySalaryService salaryService;
+    private final WorkStudyIdentityService identityService;
 
     /**
      * 核算指定年月的薪酬（资助中心）
@@ -86,7 +88,8 @@ public class WorkStudySalaryController {
     @GetMapping("/student")
     @RequirePermission("workstudy:salary:view")
     public ApiResponse<?> getStudentSalaries(@RequestAttribute(AuthInterceptor.CURRENT_USER_ATTRIBUTE) CurrentUser currentUser) {
-        return ApiResponse.success(salaryService.listSalaries(currentUser.id(), null, null, null));
+        return ApiResponse.success(salaryService.listSalaries(
+                identityService.requireStudentId(currentUser.id()), null, null, null));
     }
 
     @GetMapping("/list")

@@ -21,7 +21,6 @@ public class GiftSupplementDTO {
     private String pickupCode;
 
     // 补录操作人ID
-    @NotNull(message = "补录操作人不能为空")
     private Long operatorId;
 
     // 补录备注说明

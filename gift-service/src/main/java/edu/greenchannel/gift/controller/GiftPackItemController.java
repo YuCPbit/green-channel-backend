@@ -3,6 +3,7 @@ package edu.greenchannel.gift.controller;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import edu.greenchannel.common.ApiResponse;
+import edu.greenchannel.auth.RequirePermission;
 import edu.greenchannel.gift.entity.GiftPackItem;
 import edu.greenchannel.gift.service.GiftPackItemService;
 import org.springframework.web.bind.annotation.*;
@@ -11,6 +12,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/gift/item")
+@RequirePermission("gift:item:manage")
 public class GiftPackItemController {
 
     private final GiftPackItemService itemService;

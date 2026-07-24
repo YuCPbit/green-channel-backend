@@ -2,6 +2,7 @@ package edu.greenchannel.gift.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import edu.greenchannel.common.ApiResponse;
+import edu.greenchannel.auth.RequirePermission;
 import edu.greenchannel.gift.entity.GiftPackBatch;
 import edu.greenchannel.gift.service.GiftPackBatchService;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +13,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/gift/pack-batch")
 @RequiredArgsConstructor
+@RequirePermission("gift:pack-batch:manage")
 public class GiftPackBatchController {
 
     private final GiftPackBatchService packBatchService;
@@ -25,6 +27,7 @@ public class GiftPackBatchController {
 
     // 查询礼包批次列表
     @GetMapping("/list")
+    @RequirePermission({"student:green:view", "gift:pack-batch:manage"})
     public ApiResponse<List<GiftPackBatch>> list() {
         List<GiftPackBatch> list = packBatchService.list();
         return ApiResponse.success(list);
