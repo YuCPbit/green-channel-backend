@@ -26,6 +26,7 @@
         <module>workstudy-service</module>
         <module>dashboard-service</module>
         <module>gateway-service</module>
+        <module>tutor-affair-service</module>
     </modules>
 
     <properties>
