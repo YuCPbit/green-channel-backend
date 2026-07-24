@@ -3,12 +3,16 @@ package edu.greenchannel.gift.controller;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import edu.greenchannel.common.ApiResponse;
+import edu.greenchannel.auth.RequirePermission;
 import edu.greenchannel.gift.entity.GreenChannelBatch;
 import edu.greenchannel.gift.service.GreenChannelBatchService;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/gift/batch")
+@RequirePermission("gift:green-batch:manage")
 public class GreenBatchController {
 
     private final GreenChannelBatchService batchService;
@@ -30,6 +34,13 @@ public class GreenBatchController {
     public ApiResponse<GreenChannelBatch> getById(@PathVariable Long id) {
         GreenChannelBatch batch = batchService.getById(id);
         return ApiResponse.success(batch);
+    }
+
+    // 新增
+    @GetMapping("/list")
+    public ApiResponse<List<GreenChannelBatch>> list() {
+        List<GreenChannelBatch> list = batchService.list();
+        return ApiResponse.success(list);
     }
 
     // 批次分页查询

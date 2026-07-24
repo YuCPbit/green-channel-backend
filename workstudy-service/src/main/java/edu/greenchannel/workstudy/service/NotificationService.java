@@ -17,6 +17,11 @@ public interface NotificationService {
     void sendWarning(Long receiverId, String title, String content, String businessKey);
 
     /**
+     * 向所有启用的学校资助中心账号发送预警。
+     */
+    void sendWarningToSchoolAdmins(String title, String content, String businessKey);
+
+    /**
      * 发送业务通知（如：录用成功通知、薪酬到账通知）
      * @param receiverId 接收人ID（如：学生ID）
      * @param title 消息标题

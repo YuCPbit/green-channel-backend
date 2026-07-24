@@ -29,7 +29,7 @@ public class TutorApplyTypeController {
     }
 
     @GetMapping("/api/school/tutor-apply-types")
-    @RequirePermission("school:tutor-type:edit")
+    @RequirePermission({"school:tutor-type:view", "school:tutor-type:edit"})
     public ApiResponse<List<TutorApplyType>> allTypes() {
         return ApiResponse.success(service.allTypes());
     }

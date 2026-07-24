@@ -2,7 +2,6 @@ package edu.greenchannel.workstudy.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -19,25 +18,13 @@ public class WorkStudyApply {
     private String skills;
     private String applyReason;
     private String tutorRecommend;
-    private Long interviewerId;
-    private String interviewRemark;
-    private LocalDateTime interviewTime;
-    /**
-     * 面试状态: 0-待面试 1-已面试 2-面试通过 3-面试不通过
-     */
-    private Integer interviewStatus;
-    /**
-     * 申请状态: 1-已报名 2-面试中 3-待录用审批 4-已录用 5-未录用
-     */
-    private Integer status;
+    private Integer interviewStatus; // 0-3
+    private Integer status; // 1-5
     private LocalDateTime applyTime;
-
-    @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
-
-    @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
 
     @TableLogic
-    private Integer isDeleted;
+    @TableField("is_deleted")
+    private Integer deleted; // TINYINT(1)
 }

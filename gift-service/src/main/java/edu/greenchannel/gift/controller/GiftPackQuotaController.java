@@ -3,14 +3,17 @@ package edu.greenchannel.gift.controller;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import edu.greenchannel.common.ApiResponse;
+import edu.greenchannel.auth.RequirePermission;
 import edu.greenchannel.gift.entity.GiftPackQuota;
 import edu.greenchannel.gift.service.GiftPackQuotaService;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/gift/quota")
+@RequirePermission("gift:quota:manage")
 public class GiftPackQuotaController {
 
     private final GiftPackQuotaService quotaService;
@@ -42,6 +45,13 @@ public class GiftPackQuotaController {
         Page<GiftPackQuota> page = new Page<>(pageNum, pageSize);
         IPage<GiftPackQuota> pageData = quotaService.page(page);
         return ApiResponse.success(pageData);
+    }
+
+    // 新增
+    @GetMapping("/list")
+    public ApiResponse<List<GiftPackQuota>> list() {
+        List<GiftPackQuota> list = quotaService.list();
+        return ApiResponse.success(list);
     }
 
     // 修改名额

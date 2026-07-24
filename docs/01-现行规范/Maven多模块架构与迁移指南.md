@@ -1,7 +1,7 @@
 # Maven 多模块架构与迁移指南
 
 > 状态：现行架构基线
-> 最后核验：2026-07-22（Boot 4.1.0，1 个父 POM + 7 个子模块）
+> 最后核验：2026-07-24（Boot 4.1.0，1 个父 POM + 8 个子模块）
 > 维护人：A；修改父 POM 或 common-api 时必须同步本文
 
 ## 1. 目标结构
@@ -15,6 +15,7 @@ green-channel-backend/
 ├── platform-service/pom.xml
 ├── gift-service/pom.xml
 ├── subsidy-service/pom.xml
+├── tutor-affair-service/pom.xml
 ├── workstudy-service/pom.xml
 ├── dashboard-service/pom.xml
 └── gateway-service/pom.xml

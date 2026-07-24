@@ -1,79 +1,79 @@
 package edu.greenchannel.gift.service.impl;
 
 import edu.greenchannel.common.BusinessException;
+import edu.greenchannel.gift.entity.GiftPackBatch;
 import edu.greenchannel.gift.entity.StudentApply;
+import edu.greenchannel.gift.mapper.GiftPackBatchMapper;
+import edu.greenchannel.gift.mapper.StudentApplyMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import java.time.LocalDateTime;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class StudentApplyServiceImplTest {
 
-    @Test
-    void pickupMarksPendingApplicationAsCompleted() {
-        StudentApply apply = application(StudentApply.PICKUP_PENDING);
-        FakeStudentApplyService service = new FakeStudentApplyService(apply, true);
+    @Mock
+    private StudentApplyMapper studentApplyMapper;
 
-        StudentApply result = service.pickup(" CODE-001 ", 88L, "现场领取");
+    @Mock
+    private GiftPackBatchMapper giftPackBatchMapper;
 
-        assertEquals(StudentApply.PICKUP_COMPLETED, result.getPickupStatus());
-        assertEquals(88L, result.getPickupOperatorId());
-        assertEquals("现场领取", result.getPickupRemark());
-        assertNotNull(result.getPickupTime());
-        assertEquals("CODE-001", service.requestedCode);
+    private StudentApplyServiceImpl service;
+
+    @BeforeEach
+    void setUp() {
+        service = new StudentApplyServiceImpl(giftPackBatchMapper);
+        ReflectionTestUtils.setField(service, "baseMapper", studentApplyMapper);
     }
 
     @Test
-    void pickupRejectsRepeatedOperation() {
-        FakeStudentApplyService service = new FakeStudentApplyService(
-                application(StudentApply.PICKUP_COMPLETED), true);
+    void submitIgnoresClientIdentityAndWorkflowFields() {
+        GiftPackBatch batch = new GiftPackBatch();
+        batch.setId(3L);
+        batch.setStatus(1);
+        batch.setIsDeleted(0);
+        when(giftPackBatchMapper.selectById(3L)).thenReturn(batch);
 
-        BusinessException exception = assertThrows(BusinessException.class,
-                () -> service.pickup("CODE-001", 88L, null));
+        StudentApply request = new StudentApply();
+        request.setPackBatchId(3L);
+        request.setStudentId(999L);
+        request.setStatus(5);
+        request.setPickupCode("CLIENT-CODE");
+        request.setApplyReason(" 家庭困难 ");
 
-        assertEquals(40900, exception.getCode());
+        service.submit(request, 77L);
+
+        ArgumentCaptor<StudentApply> captor = ArgumentCaptor.forClass(StudentApply.class);
+        verify(studentApplyMapper).insert(captor.capture());
+        StudentApply saved = captor.getValue();
+        assertEquals(77L, saved.getStudentId());
+        assertEquals(2, saved.getStatus());
+        assertEquals(0, saved.getPickupStatus());
+        assertEquals("家庭困难", saved.getApplyReason());
+        assertNull(saved.getPickupCode());
     }
 
     @Test
-    void pickupRejectsUnknownCode() {
-        FakeStudentApplyService service = new FakeStudentApplyService(null, true);
-
-        BusinessException exception = assertThrows(BusinessException.class,
-                () -> service.pickup("UNKNOWN", 88L, null));
-
-        assertEquals(40400, exception.getCode());
-    }
-
-    private static StudentApply application(int pickupStatus) {
+    void studentCannotReadAnotherStudentsApplication() {
         StudentApply apply = new StudentApply();
-        apply.setId(1L);
-        apply.setPickupCode("CODE-001");
-        apply.setPickupStatus(pickupStatus);
-        return apply;
-    }
+        apply.setId(8L);
+        apply.setStudentId(99L);
+        apply.setIsDeleted(0);
+        when(studentApplyMapper.selectById(8L)).thenReturn(apply);
 
-    private static final class FakeStudentApplyService extends StudentApplyServiceImpl {
-        private final StudentApply apply;
-        private final boolean updateResult;
-        private String requestedCode;
+        BusinessException exception = assertThrows(
+                BusinessException.class, () -> service.getMine(8L, 77L));
 
-        private FakeStudentApplyService(StudentApply apply, boolean updateResult) {
-            this.apply = apply;
-            this.updateResult = updateResult;
-        }
-
-        @Override
-        protected StudentApply findByPickupCode(String pickupCode) {
-            requestedCode = pickupCode;
-            return apply;
-        }
-
-        @Override
-        protected boolean markPickedUp(Long applyId, Long operatorId, String remark, LocalDateTime pickupTime) {
-            return updateResult;
-        }
+        assertEquals(40300, exception.getCode());
     }
 }

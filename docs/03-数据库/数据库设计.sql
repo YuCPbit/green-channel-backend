@@ -19,6 +19,7 @@ CREATE TABLE `gc_user` (
   `phone` VARCHAR(20) DEFAULT NULL COMMENT '手机号',
   `email` VARCHAR(100) DEFAULT NULL COMMENT '邮箱',
   `user_type` TINYINT NOT NULL COMMENT '用户类型: 1-学生 2-辅导员 3-学院管理员 4-学校管理员 5-系统管理员',
+  `college_id` BIGINT DEFAULT NULL COMMENT '归属学院ID(辅导员、学院管理员必填)',
   `status` TINYINT DEFAULT 1 COMMENT '状态: 1-正常 0-禁用',
   `last_login_time` DATETIME DEFAULT NULL COMMENT '最后登录时间',
   `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -535,6 +536,7 @@ CREATE TABLE `gc_subsidy_batch` (
   `total_amount` DECIMAL(12,2) NOT NULL DEFAULT 0.00 COMMENT '学校总金额盘',
   `apply_start_time` DATETIME NOT NULL COMMENT '申请开始时间',
   `apply_end_time` DATETIME NOT NULL COMMENT '申请结束时间',
+  `college_submit_end_time` DATETIME NOT NULL COMMENT '学院提交截止时间',
   `status` TINYINT DEFAULT 1 COMMENT '状态: 0-未开始 1-进行中 2-已结束',
   `creator_id` BIGINT DEFAULT NULL COMMENT '创建人ID',
   `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -547,6 +549,10 @@ CREATE TABLE `gc_subsidy_batch` (
 CREATE TABLE `gc_subsidy_allocation` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   `batch_id` BIGINT NOT NULL COMMENT '补助批次ID',
+  `allocator_role` TINYINT NOT NULL COMMENT '分配发起方角色: 1-学校 2-学院',
+  `target_type` TINYINT NOT NULL COMMENT '目标类型: 1-学院 2-年级',
+  `source_id` BIGINT NOT NULL DEFAULT 0 COMMENT '分配来源ID(学校填0，学院填学院ID)',
+  `target_id` BIGINT NOT NULL COMMENT '目标ID(学院ID或年级值)',
   `college_id` BIGINT NOT NULL COMMENT '学院ID',
   `grade` INT DEFAULT NULL COMMENT '年级(为空则为学院总额)',
   `allocated_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00 COMMENT '分配金额',
@@ -596,6 +602,84 @@ CREATE TABLE `gc_subsidy_review` (
   PRIMARY KEY (`id`),
   KEY `idx_apply_id` (`apply_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='补助审核记录表';
+
+-- 32. 资助方案表
+CREATE TABLE `gc_aid_plan` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `plan_name` VARCHAR(120) NOT NULL COMMENT '方案名称',
+  `fund_source` VARCHAR(120) NOT NULL COMMENT '资金来源',
+  `amount_mode` VARCHAR(20) NOT NULL COMMENT '金额模式: FIXED/RANGE',
+  `fixed_amount` DECIMAL(10,2) DEFAULT NULL COMMENT '固定金额',
+  `min_amount` DECIMAL(10,2) DEFAULT NULL COMMENT '最低金额',
+  `max_amount` DECIMAL(10,2) DEFAULT NULL COMMENT '最高金额',
+  `quota_limit` INT NOT NULL COMMENT '名额上限',
+  `valid_start` DATE NOT NULL COMMENT '生效日期',
+  `valid_end` DATE NOT NULL COMMENT '失效日期',
+  `condition_expression` TEXT COMMENT '准入条件表达式',
+  `status` TINYINT NOT NULL DEFAULT 0 COMMENT '状态: 0-草稿 1-已发布 2-已下线',
+  `creator_id` BIGINT NOT NULL COMMENT '创建人用户ID',
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `is_deleted` TINYINT(1) DEFAULT 0 COMMENT '是否逻辑删除',
+  PRIMARY KEY (`id`),
+  KEY `idx_aid_plan_status_date` (`status`, `valid_start`, `valid_end`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='资助方案表';
+
+-- 33. 申请申诉表
+CREATE TABLE `gc_appeal` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `appeal_no` VARCHAR(50) NOT NULL COMMENT '申诉编号',
+  `source_type` VARCHAR(20) NOT NULL COMMENT '来源业务: GIFT/SUBSIDY',
+  `source_apply_id` BIGINT NOT NULL COMMENT '原申请ID',
+  `student_id` BIGINT NOT NULL COMMENT '申诉学生ID',
+  `reason` VARCHAR(1000) NOT NULL COMMENT '申诉理由',
+  `attachment_ids` JSON DEFAULT NULL COMMENT '补充附件ID数组',
+  `target_role` TINYINT NOT NULL COMMENT '处理节点: 1-辅导员 2-学院 3-学校',
+  `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态: 1-待受理 2-处理中 3-申诉成立 4-申诉驳回 5-退回补充',
+  `conclusion` VARCHAR(1000) DEFAULT NULL COMMENT '调查结论或补充说明',
+  `handler_id` BIGINT DEFAULT NULL COMMENT '当前/最终处理人',
+  `submit_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '提交时间',
+  `handle_time` DATETIME DEFAULT NULL COMMENT '办结时间',
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `is_deleted` TINYINT(1) DEFAULT 0 COMMENT '是否逻辑删除',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_appeal_no` (`appeal_no`),
+  UNIQUE KEY `uk_appeal_source` (`source_type`, `source_apply_id`, `student_id`),
+  KEY `idx_appeal_target_status` (`target_role`, `status`, `submit_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='申请申诉表';
+
+-- 34. 满意度问卷
+CREATE TABLE `gc_satisfaction_survey` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `title` VARCHAR(200) NOT NULL COMMENT '问卷标题',
+  `target_type` VARCHAR(20) NOT NULL COMMENT '目标业务: ALL/GIFT/SUBSIDY',
+  `target_batch_id` BIGINT DEFAULT NULL COMMENT '目标批次ID，为空表示全部批次',
+  `start_date` DATE NOT NULL COMMENT '开始日期',
+  `end_date` DATE NOT NULL COMMENT '结束日期',
+  `status` TINYINT NOT NULL DEFAULT 0 COMMENT '状态: 0-草稿 1-已发布 2-已结束',
+  `creator_id` BIGINT NOT NULL COMMENT '创建人用户ID',
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `is_deleted` TINYINT(1) DEFAULT 0 COMMENT '是否逻辑删除',
+  PRIMARY KEY (`id`),
+  KEY `idx_survey_status_date` (`status`, `start_date`, `end_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='资助满意度问卷';
+
+-- 35. 满意度问卷答卷
+CREATE TABLE `gc_satisfaction_response` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `survey_id` BIGINT NOT NULL COMMENT '问卷ID',
+  `student_id` BIGINT NOT NULL COMMENT '学生ID',
+  `score` TINYINT NOT NULL COMMENT '满意度评分1-5',
+  `suggestion` VARCHAR(1000) DEFAULT NULL COMMENT '主观建议',
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '提交时间',
+  `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `is_deleted` TINYINT(1) DEFAULT 0 COMMENT '是否逻辑删除',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_survey_student` (`survey_id`, `student_id`),
+  KEY `idx_survey_score` (`survey_id`, `score`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='资助满意度答卷';
 
 -- ========================================================
 -- 分组：系统管理及配置组
@@ -711,6 +795,9 @@ CREATE TABLE `gc_tutor_application` (
   `apply_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '申请时间',
   `submit_time` DATETIME DEFAULT NULL COMMENT '正式提交时间',
   `remark` VARCHAR(255) DEFAULT NULL COMMENT '备注',
+  `disburse_status` TINYINT DEFAULT 0 COMMENT '资金下发状态: 0-不涉及资金 1-待下发 2-已下发',
+  `disburse_time` DATETIME DEFAULT NULL COMMENT '资金下发时间',
+  `disburse_operator_id` BIGINT DEFAULT NULL COMMENT '下发操作人ID',
   `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `is_deleted` TINYINT(1) DEFAULT 0 COMMENT '是否逻辑删除: 0-未删除 1-已删除',
@@ -839,6 +926,7 @@ CREATE TABLE `gc_work_study_hire` (
   `leave_reason` VARCHAR(255) DEFAULT NULL COMMENT '离岗原因',
   `approved_by` BIGINT DEFAULT NULL COMMENT '录用审批人ID(资助中心)',
   `approve_time` DATETIME DEFAULT NULL COMMENT '审批时间',
+  `salary_rate` DECIMAL(8,2) DEFAULT NULL COMMENT '录用时薪酬标准快照',
   `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `is_deleted` TINYINT(1) DEFAULT 0 COMMENT '是否逻辑删除: 0-未删除 1-已删除',
@@ -846,6 +934,31 @@ CREATE TABLE `gc_work_study_hire` (
   KEY `idx_student_id` (`student_id`),
   KEY `idx_position_id` (`position_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='勤工助学录用记录表';
+
+-- 55.1 勤工助学岗位变动申请表
+CREATE TABLE `gc_work_study_movement` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `movement_no` VARCHAR(50) NOT NULL COMMENT '变动申请编号',
+  `hire_id` BIGINT NOT NULL COMMENT '原在岗记录ID',
+  `student_id` BIGINT NOT NULL COMMENT '学生ID',
+  `from_position_id` BIGINT NOT NULL COMMENT '原岗位ID',
+  `to_position_id` BIGINT DEFAULT NULL COMMENT '调岗目标岗位ID',
+  `movement_type` VARCHAR(20) NOT NULL COMMENT '变动类型: TRANSFER/LEAVE',
+  `reason` VARCHAR(500) NOT NULL COMMENT '申请原因',
+  `applicant_user_id` BIGINT NOT NULL COMMENT '申请人用户ID',
+  `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态: 1-待审批 2-已通过 3-已驳回',
+  `reviewer_id` BIGINT DEFAULT NULL COMMENT '审批人用户ID',
+  `review_comment` VARCHAR(500) DEFAULT NULL COMMENT '审批意见',
+  `apply_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '申请时间',
+  `review_time` DATETIME DEFAULT NULL COMMENT '审批时间',
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `is_deleted` TINYINT(1) DEFAULT 0 COMMENT '是否逻辑删除',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_workstudy_movement_no` (`movement_no`),
+  KEY `idx_movement_hire_status` (`hire_id`, `status`),
+  KEY `idx_movement_student_time` (`student_id`, `apply_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='勤工助学岗位变动申请表';
 
 -- 56. 勤工助学考勤记录表
 CREATE TABLE `gc_work_study_attendance` (
@@ -955,3 +1068,27 @@ INSERT INTO `gc_system_config` (`config_name`, `config_key`, `config_value`, `co
 ('勤工助学每批次最多报名岗位数', 'WS_MAX_APPLY_COUNT', '3', 'NUMBER', '学生每批次最多可报名的岗位数量'),
 ('勤工助学最低时薪标准', 'WS_MIN_HOURLY_RATE', '12', 'NUMBER', '薪酬标准不得低于此值(元/小时)'),
 ('辅导员申请单笔金额上限', 'TUTOR_APP_MAX_AMOUNT', '50000', 'NUMBER', '辅导员事务申请单笔金额上限(元)');
+
+-- 补助发放台账表（2026-07-22 新增）
+
+CREATE TABLE `gc_subsidy_ledger` (
+  `id`                  BIGINT          NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `batch_id`            BIGINT          NOT NULL COMMENT '补助批次ID',
+  `apply_id`            BIGINT          NOT NULL COMMENT '补助申请ID',
+  `student_id`          BIGINT          NOT NULL COMMENT '学生ID',
+  `apply_no`            VARCHAR(50)     NOT NULL COMMENT '申请编号',
+  `subsidy_type`        TINYINT         NOT NULL COMMENT '补助类型: 1-生活补助 2-路费补助 3-临时困难补助',
+  `approved_amount`     DECIMAL(10,2)   NOT NULL COMMENT '审批金额',
+  `disburse_status`     TINYINT         NOT NULL DEFAULT 0 COMMENT '发放状态: 0-待发放 1-已发放 2-发放失败',
+  `disburse_time`       DATETIME        DEFAULT NULL COMMENT '发放时间',
+  `disburse_operator_id` BIGINT         DEFAULT NULL COMMENT '发放操作人ID',
+  `bank_card_no`        VARCHAR(50)     DEFAULT NULL COMMENT '银行卡号',
+  `remark`              VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+  `create_time`         DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time`         DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `is_deleted`          TINYINT(1)      DEFAULT 0 COMMENT '是否逻辑删除',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_apply_id` (`apply_id`),
+  KEY `idx_batch_id` (`batch_id`),
+  KEY `idx_disburse_status` (`disburse_status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='补助发放台账表';

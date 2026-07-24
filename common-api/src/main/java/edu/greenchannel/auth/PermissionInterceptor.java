@@ -3,6 +3,8 @@ package edu.greenchannel.auth;
 import edu.greenchannel.common.BusinessException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.util.Arrays;
+
 import org.springframework.stereotype.Component;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
@@ -22,10 +24,9 @@ public class PermissionInterceptor implements HandlerInterceptor {
             return true;
         }
         CurrentUser user = (CurrentUser) request.getAttribute(AuthInterceptor.CURRENT_USER_ATTRIBUTE);
-        if (user == null || !user.permissions().contains(requirement.value())) {
+        if (user == null || Arrays.stream(requirement.value()).noneMatch(user.permissions()::contains)) {
             throw new BusinessException(40300, "无权执行此操作");
         }
         return true;
     }
 }
-

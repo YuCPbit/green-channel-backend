@@ -14,7 +14,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AuthServiceTest {
     private final InMemoryUserRepository repository = new InMemoryUserRepository();
-    private final TokenService tokenService = new TokenService();
+    private final TokenService tokenService =
+            new TokenService("unit-test-token-secret-at-least-32-characters");
     private final AuthService authService = new AuthService(repository, tokenService);
 
     @Test
