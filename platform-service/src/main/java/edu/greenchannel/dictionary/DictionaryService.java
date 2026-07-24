@@ -2,6 +2,7 @@ package edu.greenchannel.dictionary;
 
 import edu.greenchannel.common.BusinessException;
 import edu.greenchannel.common.PageResult;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;

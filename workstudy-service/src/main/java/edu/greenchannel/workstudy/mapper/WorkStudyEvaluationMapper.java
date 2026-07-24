@@ -6,11 +6,13 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import edu.greenchannel.workstudy.dto.ActiveHireVO;
 import edu.greenchannel.workstudy.dto.WorkStudyEvaluationVO;
 import edu.greenchannel.workstudy.entity.WorkStudyEvaluation;
+import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
 
+@Mapper
 public interface WorkStudyEvaluationMapper extends BaseMapper<WorkStudyEvaluation> {
 
     /**
