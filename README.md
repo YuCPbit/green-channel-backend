@@ -9,10 +9,11 @@
 | `common-api` | - | 公共响应、异常、用户上下文、权限注解和跨服务契约 | 已提取 |
 | `platform-service` | 8081 | 认证、学生、附件、字典、消息、外部集成、系统管理 | 已迁移，可运行 |
 | `gift-service` | 8082 | 绿色通道、大礼包、审核和领取 | B 的业务代码已迁移 |
-| `subsidy-service` | 8083 | 困难补助、资助方案、申诉、辅导员事务 | C 的业务代码已迁移 |
-| `workstudy-service` | 8084 | 勤工助学 | D 的业务代码已迁移 |
+| `subsidy-service` | 8083 | 困难补助、资助方案、申诉、满意度问卷 | B/C 代码已整合，A 已补接管功能 |
+| `workstudy-service` | 8084 | 勤工助学、调岗离岗 | B/D 代码已整合，A 已补岗位变动审批 |
 | `dashboard-service` | 8085 | 看板、统计、模块化报表和 WebSocket 推送 | D 的业务代码及模块注册表已迁移 |
-| `gateway-service` | 8080 | 前端统一入口及五个后端服务的路由 | 已配置 Spring Cloud Gateway |
+| `tutor-affair-service` | 8086 | 辅导员事务申请、审批与台账 | B 的业务代码已整合 |
+| `gateway-service` | 8080 | 前端统一入口及六个后端业务服务的路由 | 已配置 Spring Cloud Gateway |
 
 根目录 `pom.xml` 的 `packaging` 是 `pom`，只负责聚合模块和统一版本；每个模块都有自己的 `pom.xml`。这就是项目约定的“多个 Maven 子项目”，不再把全部代码打进同一个根 JAR。
 
@@ -27,7 +28,8 @@ green-channel-backend/
 
 ## 构建与启动
 
-1. 执行 `docs/03-数据库/数据库设计.sql` 和 `docs/03-数据库/数据库初始化数据.sql`。
+1. 新库执行 `docs/03-数据库/数据库设计.sql` 和 `docs/03-数据库/数据库初始化数据.sql`；
+   已有开发库再执行 `docs/03-数据库/迁移-2026-07-24-A接管功能.sql`。
 2. 在根目录验证所有模块：
 
    ```bash
@@ -42,6 +44,7 @@ green-channel-backend/
    DB_USERNAME=root DB_PASSWORD=你的密码 mvn -pl subsidy-service -am spring-boot:run
    DB_USERNAME=root DB_PASSWORD=你的密码 mvn -pl workstudy-service -am spring-boot:run
    DB_USERNAME=root DB_PASSWORD=你的密码 mvn -pl dashboard-service -am spring-boot:run
+   DB_USERNAME=root DB_PASSWORD=你的密码 mvn -pl tutor-affair-service -am spring-boot:run
    mvn -pl gateway-service spring-boot:run
    ```
 

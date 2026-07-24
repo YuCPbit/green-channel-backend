@@ -66,6 +66,15 @@ VALUES
   ('批次配置', 'school:batch:view', 1, 0, '/batch', 'calendar', 100),
   ('学校审核', 'school:review:view', 1, 0, '/school-review', 'audit', 110),
   ('资金管理', 'school:fund:view', 1, 0, '/fund', 'wallet', 120),
+  ('资助方案管理', 'school:plan:view', 1, 0, '/aid-plans', 'solution', 122),
+  ('申诉处理', 'school:appeal:view', 1, 0, '/appeals', 'audit', 124),
+  ('问卷管理', 'school:survey:view', 1, 0, '/surveys', 'form', 126),
+  ('我的申诉', 'student:appeal:view', 1, 0, '/my-appeals', 'audit', 32),
+  ('满意度反馈', 'student:survey:view', 1, 0, '/survey-feedback', 'form', 34),
+  ('申诉处理', 'tutor:appeal:view', 1, 0, '/appeals', 'audit', 62),
+  ('申诉处理', 'college:appeal:view', 1, 0, '/appeals', 'audit', 82),
+  ('岗位变动申请', 'workstudy:movement:apply', 1, 0, '/workstudy/movements', 'swap', 36),
+  ('岗位变动审批', 'workstudy:movement:review', 1, 0, '/workstudy/movement-review', 'audit', 128),
   ('数据看板', 'school:dashboard:view', 1, 0, '/dashboard', 'dashboard', 130),
   ('消息中心', 'message:view', 1, 0, '/messages', 'bell', 140),
   ('用户管理', 'system:user:view', 1, 0, '/system/users', 'user', 150),
@@ -88,15 +97,20 @@ FROM gc_role r
 JOIN gc_permission p ON (
   p.permission_code = 'home:view'
   OR (r.role_code = 'STUDENT' AND p.permission_code IN
-      ('student:green:view', 'student:subsidy:view', 'message:view'))
+      ('student:green:view', 'student:subsidy:view', 'student:appeal:view',
+       'student:survey:view', 'workstudy:movement:apply', 'message:view'))
   OR (r.role_code = 'TUTOR' AND p.permission_code IN
-      ('tutor:student:view', 'tutor:review:view', 'tutor:application:view', 'message:view'))
+      ('tutor:student:view', 'tutor:review:view', 'tutor:application:view',
+       'tutor:appeal:view', 'message:view'))
   OR (r.role_code = 'COLLEGE_ADMIN' AND p.permission_code IN
-      ('college:review:view', 'college:quota:view', 'college:report:view', 'message:view'))
+      ('college:review:view', 'college:quota:view', 'college:report:view',
+       'college:appeal:view', 'message:view'))
   OR (r.role_code = 'SCHOOL_ADMIN' AND p.permission_code IN
       ('school:student:view', 'school:student:edit', 'school:tutor-type:edit',
        'school:batch:view', 'school:review:view',
-       'school:fund:view', 'school:dashboard:view', 'message:view'))
+       'school:fund:view', 'school:plan:view', 'school:appeal:view',
+       'school:survey:view', 'workstudy:movement:review',
+       'school:dashboard:view', 'message:view'))
   OR (r.role_code = 'SYSTEM_ADMIN' AND p.permission_code IN
       ('message:view', 'school:tutor-type:edit', 'system:user:view', 'system:rbac:view',
        'system:dictionary:view', 'system:dictionary:edit',

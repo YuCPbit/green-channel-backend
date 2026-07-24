@@ -603,6 +603,84 @@ CREATE TABLE `gc_subsidy_review` (
   KEY `idx_apply_id` (`apply_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='补助审核记录表';
 
+-- 32. 资助方案表
+CREATE TABLE `gc_aid_plan` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `plan_name` VARCHAR(120) NOT NULL COMMENT '方案名称',
+  `fund_source` VARCHAR(120) NOT NULL COMMENT '资金来源',
+  `amount_mode` VARCHAR(20) NOT NULL COMMENT '金额模式: FIXED/RANGE',
+  `fixed_amount` DECIMAL(10,2) DEFAULT NULL COMMENT '固定金额',
+  `min_amount` DECIMAL(10,2) DEFAULT NULL COMMENT '最低金额',
+  `max_amount` DECIMAL(10,2) DEFAULT NULL COMMENT '最高金额',
+  `quota_limit` INT NOT NULL COMMENT '名额上限',
+  `valid_start` DATE NOT NULL COMMENT '生效日期',
+  `valid_end` DATE NOT NULL COMMENT '失效日期',
+  `condition_expression` TEXT COMMENT '准入条件表达式',
+  `status` TINYINT NOT NULL DEFAULT 0 COMMENT '状态: 0-草稿 1-已发布 2-已下线',
+  `creator_id` BIGINT NOT NULL COMMENT '创建人用户ID',
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `is_deleted` TINYINT(1) DEFAULT 0 COMMENT '是否逻辑删除',
+  PRIMARY KEY (`id`),
+  KEY `idx_aid_plan_status_date` (`status`, `valid_start`, `valid_end`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='资助方案表';
+
+-- 33. 申请申诉表
+CREATE TABLE `gc_appeal` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `appeal_no` VARCHAR(50) NOT NULL COMMENT '申诉编号',
+  `source_type` VARCHAR(20) NOT NULL COMMENT '来源业务: GIFT/SUBSIDY',
+  `source_apply_id` BIGINT NOT NULL COMMENT '原申请ID',
+  `student_id` BIGINT NOT NULL COMMENT '申诉学生ID',
+  `reason` VARCHAR(1000) NOT NULL COMMENT '申诉理由',
+  `attachment_ids` JSON DEFAULT NULL COMMENT '补充附件ID数组',
+  `target_role` TINYINT NOT NULL COMMENT '处理节点: 1-辅导员 2-学院 3-学校',
+  `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态: 1-待受理 2-处理中 3-申诉成立 4-申诉驳回 5-退回补充',
+  `conclusion` VARCHAR(1000) DEFAULT NULL COMMENT '调查结论或补充说明',
+  `handler_id` BIGINT DEFAULT NULL COMMENT '当前/最终处理人',
+  `submit_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '提交时间',
+  `handle_time` DATETIME DEFAULT NULL COMMENT '办结时间',
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `is_deleted` TINYINT(1) DEFAULT 0 COMMENT '是否逻辑删除',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_appeal_no` (`appeal_no`),
+  UNIQUE KEY `uk_appeal_source` (`source_type`, `source_apply_id`, `student_id`),
+  KEY `idx_appeal_target_status` (`target_role`, `status`, `submit_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='申请申诉表';
+
+-- 34. 满意度问卷
+CREATE TABLE `gc_satisfaction_survey` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `title` VARCHAR(200) NOT NULL COMMENT '问卷标题',
+  `target_type` VARCHAR(20) NOT NULL COMMENT '目标业务: ALL/GIFT/SUBSIDY',
+  `target_batch_id` BIGINT DEFAULT NULL COMMENT '目标批次ID，为空表示全部批次',
+  `start_date` DATE NOT NULL COMMENT '开始日期',
+  `end_date` DATE NOT NULL COMMENT '结束日期',
+  `status` TINYINT NOT NULL DEFAULT 0 COMMENT '状态: 0-草稿 1-已发布 2-已结束',
+  `creator_id` BIGINT NOT NULL COMMENT '创建人用户ID',
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `is_deleted` TINYINT(1) DEFAULT 0 COMMENT '是否逻辑删除',
+  PRIMARY KEY (`id`),
+  KEY `idx_survey_status_date` (`status`, `start_date`, `end_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='资助满意度问卷';
+
+-- 35. 满意度问卷答卷
+CREATE TABLE `gc_satisfaction_response` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `survey_id` BIGINT NOT NULL COMMENT '问卷ID',
+  `student_id` BIGINT NOT NULL COMMENT '学生ID',
+  `score` TINYINT NOT NULL COMMENT '满意度评分1-5',
+  `suggestion` VARCHAR(1000) DEFAULT NULL COMMENT '主观建议',
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '提交时间',
+  `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `is_deleted` TINYINT(1) DEFAULT 0 COMMENT '是否逻辑删除',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_survey_student` (`survey_id`, `student_id`),
+  KEY `idx_survey_score` (`survey_id`, `score`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='资助满意度答卷';
+
 -- ========================================================
 -- 分组：系统管理及配置组
 -- ========================================================
@@ -848,6 +926,7 @@ CREATE TABLE `gc_work_study_hire` (
   `leave_reason` VARCHAR(255) DEFAULT NULL COMMENT '离岗原因',
   `approved_by` BIGINT DEFAULT NULL COMMENT '录用审批人ID(资助中心)',
   `approve_time` DATETIME DEFAULT NULL COMMENT '审批时间',
+  `salary_rate` DECIMAL(8,2) DEFAULT NULL COMMENT '录用时薪酬标准快照',
   `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `is_deleted` TINYINT(1) DEFAULT 0 COMMENT '是否逻辑删除: 0-未删除 1-已删除',
@@ -855,6 +934,31 @@ CREATE TABLE `gc_work_study_hire` (
   KEY `idx_student_id` (`student_id`),
   KEY `idx_position_id` (`position_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='勤工助学录用记录表';
+
+-- 55.1 勤工助学岗位变动申请表
+CREATE TABLE `gc_work_study_movement` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `movement_no` VARCHAR(50) NOT NULL COMMENT '变动申请编号',
+  `hire_id` BIGINT NOT NULL COMMENT '原在岗记录ID',
+  `student_id` BIGINT NOT NULL COMMENT '学生ID',
+  `from_position_id` BIGINT NOT NULL COMMENT '原岗位ID',
+  `to_position_id` BIGINT DEFAULT NULL COMMENT '调岗目标岗位ID',
+  `movement_type` VARCHAR(20) NOT NULL COMMENT '变动类型: TRANSFER/LEAVE',
+  `reason` VARCHAR(500) NOT NULL COMMENT '申请原因',
+  `applicant_user_id` BIGINT NOT NULL COMMENT '申请人用户ID',
+  `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态: 1-待审批 2-已通过 3-已驳回',
+  `reviewer_id` BIGINT DEFAULT NULL COMMENT '审批人用户ID',
+  `review_comment` VARCHAR(500) DEFAULT NULL COMMENT '审批意见',
+  `apply_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '申请时间',
+  `review_time` DATETIME DEFAULT NULL COMMENT '审批时间',
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `is_deleted` TINYINT(1) DEFAULT 0 COMMENT '是否逻辑删除',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_workstudy_movement_no` (`movement_no`),
+  KEY `idx_movement_hire_status` (`hire_id`, `status`),
+  KEY `idx_movement_student_time` (`student_id`, `apply_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='勤工助学岗位变动申请表';
 
 -- 56. 勤工助学考勤记录表
 CREATE TABLE `gc_work_study_attendance` (
